@@ -270,6 +270,7 @@ class QuantumRouter:
         Process all embeddings to resolve movements and update the program.
         """
         for current_pos in range(len(self.embeddings) - 1):
+            print(f"now in {current_pos}")
             movement_program = self.resolve_movements(current_pos)
             self.program += movement_program
 
@@ -288,7 +289,8 @@ class QuantumRouter:
         sorted_movements = sorted(movements.keys(), key=lambda k: math.dist(movements[k][:2], movements[k][2:]))
         violations = self.check_violations(sorted_movements, movements)
         layers = self.handle_violations(violations, movements, sorted_movements, current_pos)
-        layers[-1]["gates"] = gates_in_layer(self.gate_list[next_pos])
+        print(f"layers len{len(layers)}")
+        layers[len(layers)-1]["gates"] = gates_in_layer(self.gate_list[next_pos])
         return self.generate_program(layers)[2:]
 
     def handle_violations(self, violations: list[tuple[int, int]], movements: dict[int, tuple[int, int, int, int]], sorted_movements: list[int], current_pos: int) -> list[dict[str, list]]:
