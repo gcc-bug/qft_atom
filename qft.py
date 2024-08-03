@@ -24,20 +24,27 @@ class QFT:
         # Apply Controlled-Z gates in a specific pattern across all qubits
         for i in range(1, self.num_qubits):
             quantum_circuit.cz(0, i)  # Apply CZ between the first qubit and others
+            quantum_circuit.cz(0, i)  # Apply CZ between the first qubit and others
             j = 1
             while j < i / 2:
+                quantum_circuit.cz(j, i - j)  # Apply CZ in a staggered manner within a subset of qubits
                 quantum_circuit.cz(j, i - j)  # Apply CZ in a staggered manner within a subset of qubits
                 j += 1
 
         # Further apply Controlled-Z gates to ensure complete QFT
         for i in range(1, self.num_qubits - 1):
             quantum_circuit.cz(i, self.num_qubits - 1)  # Connect each qubit to the last one with CZ
+            quantum_circuit.cz(i, self.num_qubits - 1)  # Connect each qubit to the last one with CZ
             j = i + 1
             while j < (self.num_qubits - 1 + i) / 2:
+                quantum_circuit.cz(j, self.num_qubits - 1 + i - j)  # Staggered CZ gates towards the end
                 quantum_circuit.cz(j, self.num_qubits - 1 + i - j)  # Staggered CZ gates towards the end
                 j += 1
 
         return quantum_circuit
+    
+    def draw(self) -> None:
+        print(self.circuit.draw())
     
     def export_to_qasm(self, filename: str) -> None:
         """
