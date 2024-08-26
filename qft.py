@@ -10,6 +10,7 @@ class QFT:
         """
         self.num_qubits = num_qubits
         self.circuit,self.gate_list = self._initialize_circuit()
+        self.num_gate = len(self.circuit.data)
 
     def _initialize_circuit(self) -> tuple[QuantumCircuit, list[list[int]]]:
         """
