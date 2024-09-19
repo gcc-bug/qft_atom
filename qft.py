@@ -50,7 +50,26 @@ class QFT:
 
     def draw(self) -> None:
         display(self.full_circuit.draw('mpl'))
-    
+
+    def LNN_maps(self) -> list[list[int]]:
+        maps = []
+        current_map = [[1,i+1] for i in range(self.num_qubits)]
+
+        def swap_qubits_by_move(locations, qubits_pair):
+            new_loc = copy.deepcopy(locations)
+            for q0,q1 in qubits_pair:
+                new_loc[q0], new_loc[q1] = new_loc[q1], new_loc[q0]
+            return new_loc
+
+        for i, gates in enumerate(self.gate_list):
+            if i%2 == 0:
+                maps.append(current_map)
+            else:
+                new_map = swap_qubits_by_move(current_map, gates)
+                maps.append(new_map)
+                current_map = copy.deepcopy(new_map)
+        return maps
+
     def export_to_qasm(self, filename: str, full = True) -> None:
         """
         Export the quantum circuit to an OpenQASM file.
