@@ -171,16 +171,16 @@ class QuantumRouter:
         self.routing_strategy = routing_strategy
         self.movement_list = []
 
-    def validate_embeddings(self, embeddings: list[list[list[int]]]) -> None:
+    def validate_embeddings(self, before_maps: list[list[list[int]]]) -> None:
         """
-        Validate the embeddings to ensure they contain locations for all qubits.
+        Validate the maps to ensure they contain locations for all qubits.
         
         Parameters:
-        embeddings (list[list[list[int]]]): Embeddings for the qubits.
+        before_maps (list[list[list[int]]]): maps before the gate execute.
         """
-        for embedding in embeddings:
-            assert len(embedding) == self.num_qubits, f"Each embedding must contain locations for all {self.num_qubits} qubits."
-            for loc in embedding:
+        for map in before_maps:
+            assert len(map) == self.num_qubits, f"Each embedding must contain locations for all {self.num_qubits} qubits."
+            for loc in map:
                 assert len(loc) == 2, "Each location must be a list containing exactly two coordinates: [x, y]."
 
     def validate_architecture_size(self, arch_size: list[int]) -> None:
@@ -230,9 +230,9 @@ class QuantumRouter:
         program = code_gen.builder(no_transfer=False)
         return program.emit_full()
 
-    def process_all_embeddings(self) -> None:
+    def process_all_maps(self) -> None:
         """
-        Process all embeddings to resolve movements and update the program.
+        Process all maps to resolve movements and update the program.
         """
         for current_pos in range(len(self.before_maps) - 1):
             movements = self.resolve_movements(current_pos)
@@ -279,7 +279,7 @@ class QuantumRouter:
         current_pos (int): The current position in the embeddings list.
         
         Returns:
-        str: The program for the resolved movements.
+        The list for the resolved movements.
         """
         next_pos = current_pos + 1
         movements = get_movements(self.before_maps[current_pos], self.before_maps[next_pos])
@@ -364,4 +364,4 @@ class QuantumRouter:
         Run the QuantumRouter to initialize, process embeddings.
         """
         self.movement_list = []
-        self.process_all_embeddings()
+        self.process_all_maps()
