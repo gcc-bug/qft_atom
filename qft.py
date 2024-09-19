@@ -51,16 +51,22 @@ class QFT:
     def draw(self) -> None:
         display(self.full_circuit.draw('mpl'))
     
-    def export_to_qasm(self, filename: str) -> None:
+    def export_to_qasm(self, filename: str, full = True) -> None:
         """
         Export the quantum circuit to an OpenQASM file.
 
         :param filename: str
             The filename for the QASM output.
+            full: bool
+            Export full circuit or cz circuit
         """
         if not filename.endswith('.qasm'):
             raise ValueError("The filename must end with '.qasm' to ensure proper QASM file format.")
-        qasm2.dump(self.full_circuit, filename)
+        if full:
+            qasm2.dump(self.full_circuit, filename)
+        else:
+            qasm2.dump(self.cz_circuit, filename)
+
         print(f"QASM file '{filename}' has been created.")
 
 def get_2q_gates_list(circ: QuantumCircuit)-> list[tuple[int]]:
