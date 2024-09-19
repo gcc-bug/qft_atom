@@ -235,9 +235,34 @@ class QuantumRouter:
         Process all maps to resolve movements and update the program.
         """
         for current_pos in range(len(self.before_maps) - 1):
-            movements = self.resolve_movements(current_pos)
+            movements, gate_maps = self.move_to_excute_gate(current_pos)
+            movements += self.move_to_before_map(current_pos, gate_maps)
             assert len(movements) > 0, "there should be some movements between embeddings"
             self.movement_list.append(movements)
+
+        movements, _ = self.move_to_excute_gate(-1)
+        assert len(movements) > 0, "there should be some movements between embeddings"
+        self.movement_list.append(movements)
+
+    def move_to_excute_gate(self,current_pos:int):
+        gate_maps = self.get_gate_maps(current_pos)
+        movements = get_movements(self.before_maps[current_pos], gate_maps)
+        sorted_movements = sorted(movements.keys(), key=lambda k: math.dist(movements[k][:2], movements[k][2:]))
+        violations = self.check_violations(sorted_movements, movements)
+        move_sequences = self.handle_violations(violations, movements, sorted_movements, current_pos)
+        return move_sequences, gate_maps
+
+    def get_gate_maps(self, current_pos:int ):
+        gate_maps = copy.deepcopy(self.before_maps[current_pos])
+        for q0, q1 in self.gate_list[current_pos]:
+            gate_maps[q0] = gate_maps[q1]
+        return gate_maps
+    def move_to_before_map(self, current_pos:int, gate_maps):
+        movements = get_movements(gate_maps, self.before_maps[current_pos+1])
+        sorted_movements = sorted(movements.keys(), key=lambda k: math.dist(movements[k][:2], movements[k][2:]))
+        violations = self.check_violations(sorted_movements, movements)
+        move_sequences = self.handle_violations(violations, movements, sorted_movements, current_pos)
+        return move_sequences
 
     def solve_violations(self, movements, violations, sorted_keys):
         """
