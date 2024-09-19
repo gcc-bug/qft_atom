@@ -148,24 +148,24 @@ def gates_in_layer(gate_list:list[list[int]])->list[dict[str, int]]:
     return res
 
 class QuantumRouter:
-    def __init__(self, num_qubits: int, embeddings: list[list[list[int]]], gate_list: list[list[int]], arch_size: list[int], routing_strategy: str = "maximalis") -> None:
+    def __init__(self, num_qubits: int, before_maps: list[list[list[int]]], gate_list: list[list[int]], arch_size: list[int], routing_strategy: str = "maximalis") -> None:
         """
         Initialize the QuantumRouter object with the given parameters.
         
         Parameters:
         num_qubits (int): Number of qubits.
-        embeddings (list[list[list[int]]]): Embeddings for the qubits.
+        before_maps (list[list[list[int]]]): maps before the gate execute.
         gate_list (list[list[int]]): list of two-qubit gates.
         arch_size (list[int]): Architecture size as [x, y].
         routing_strategy (str): Strategy used for routing.
         """
         self.num_qubits = num_qubits
-        self.validate_embeddings(embeddings)
-        self.embeddings = embeddings
+        self.validate_embeddings(before_maps)
+        self.before_maps = before_maps
         
-        assert len(embeddings) == len(gate_list), "The number of embeddings should match the number of two-qubit gates in gate_list."
+        assert len(before_maps) == len(gate_list), "The number of embeddings should match the number of two-qubit gates in gate_list."
         self.gate_list = gate_list
-        
+
         self.validate_architecture_size(arch_size)
         self.arch_size = arch_size
         self.routing_strategy = routing_strategy
@@ -200,8 +200,8 @@ class QuantumRouter:
         """
         Initialize the program with the initial layer and gates.
         """
-        layers = [map_to_layer(self.embeddings[0])]
-        initial_layer = map_to_layer(self.embeddings[0])
+        layers = [map_to_layer(self.before_maps[0])]
+        initial_layer = map_to_layer(self.before_maps[0])
         initial_layer["gates"] = gates_in_layer(self.gate_list[0])
         layers.append(initial_layer)
         return self.generate_program(layers)
@@ -234,7 +234,7 @@ class QuantumRouter:
         """
         Process all embeddings to resolve movements and update the program.
         """
-        for current_pos in range(len(self.embeddings) - 1):
+        for current_pos in range(len(self.before_maps) - 1):
             movements = self.resolve_movements(current_pos)
             assert len(movements) > 0, "there should be some movements between embeddings"
             self.movement_list.append(movements)
@@ -282,7 +282,7 @@ class QuantumRouter:
         str: The program for the resolved movements.
         """
         next_pos = current_pos + 1
-        movements = get_movements(self.embeddings[current_pos], self.embeddings[next_pos])
+        movements = get_movements(self.before_maps[current_pos], self.before_maps[next_pos])
         sorted_movements = sorted(movements.keys(), key=lambda k: math.dist(movements[k][:2], movements[k][2:]))
         violations = self.check_violations(sorted_movements, movements)
         move_sequences = self.handle_violations(violations, movements, sorted_movements, current_pos)
@@ -347,11 +347,11 @@ class QuantumRouter:
         filename (str): The filename to save the program.
         """
         assert filename.endswith('.json'), "program should be saved to a .json file"
-        assert len(self.movement_list) == len(self.embeddings)-1, "before generate program, movement should be finished"
+        assert len(self.movement_list) == len(self.before_maps)-1, "before generate program, movement should be finished"
         program = self.initialize_program()
         for i,movements in enumerate(self.movement_list):
             layers = []
-            layer = map_to_layer(self.embeddings[i])
+            layer = map_to_layer(self.before_maps[i])
             for mov in movements:
                 layers.append(self.update_layer(layer,mov))
             layers[-1]["gates"] = gates_in_layer(self.gate_list[i+1])
