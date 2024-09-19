@@ -236,7 +236,9 @@ class QuantumRouter:
         """
         for current_pos in range(len(self.before_maps) - 1):
             movements, gate_maps = self.move_to_excute_gate(current_pos)
-            movements += self.move_to_before_map(current_pos, gate_maps)
+            assert len(movements) > 0, "there should be some movements between embeddings"
+            self.movement_list.append(movements)
+            movements = self.move_to_before_map(current_pos, gate_maps)
             assert len(movements) > 0, "there should be some movements between embeddings"
             self.movement_list.append(movements)
 
@@ -246,6 +248,7 @@ class QuantumRouter:
 
     def move_to_excute_gate(self,current_pos:int):
         gate_maps = self.get_gate_maps(current_pos)
+        # print(gate_maps)
         movements = get_movements(self.before_maps[current_pos], gate_maps)
         sorted_movements = sorted(movements.keys(), key=lambda k: math.dist(movements[k][:2], movements[k][2:]))
         violations = self.check_violations(sorted_movements, movements)
