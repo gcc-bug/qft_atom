@@ -252,15 +252,15 @@ class QuantumRouter:
         sorted_movements = sorted(movements.keys(), key=lambda k: math.dist(movements[k][:2], movements[k][2:]))
         violations = self.check_violations(sorted_movements, movements)
         move_sequences = self.handle_violations(violations, movements, sorted_movements, current_pos)
-        print(current_pos)
+        # print(current_pos)
         gate_maps = copy.deepcopy(self.before_maps[current_pos])
         for movements in move_sequences:
             for move in movements:
-                print(move)
+                # print(move)
                 qubit = move[0]
                 assert move[1] == gate_maps[qubit], f"qubit should move form {gate_maps[qubit]}, now in {move[1]}"
                 gate_maps[qubit] = move[2]
-        print(f"gate maps:{gate_maps}")
+        # print(f"gate maps:{gate_maps}")
         return move_sequences, gate_maps
 
     def get_gate_maps(self, current_pos:int ):
@@ -294,7 +294,7 @@ class QuantumRouter:
             resolution_order = maximalis_solve(sorted_keys, violations)
         else:
             resolution_order = maximalis_solve_sort(self.num_q, violations, sorted_keys)
-        print(f'Resolution Order: {resolution_order}')
+        # print(f'Resolution Order: {resolution_order}')
         move_sequence =[]
         for qubit in resolution_order:
             sorted_keys.remove(qubit)
@@ -307,7 +307,7 @@ class QuantumRouter:
             violations = [v for v in violations if qubit not in v]
             del movements[qubit]
             if current_pos != None:
-                print(f"qubit:{qubit}, pos:{current_pos}, gate:{self.gate_list[current_pos]}")
+                # print(f"qubit:{qubit}, pos:{current_pos}, gate:{self.gate_list[current_pos]}")
                 for q0,q1 in self.gate_list[current_pos]:
                     if q0 == qubit:
                         sorted_keys.remove(q1)
