@@ -200,9 +200,9 @@ class QuantumRouter:
         Initialize the program with the initial layer and gates.
         """
         layers = [map_to_layer(self.before_maps[0])]
-        initial_layer = map_to_layer(self.before_maps[0])
-        initial_layer["gates"] = gates_in_layer(self.gate_list[0])
-        layers.append(initial_layer)
+        # initial_layer = map_to_layer(self.before_maps[0])
+        # initial_layer["gates"] = gates_in_layer(self.gate_list[0])
+        # layers.append(initial_layer)
         return self.generate_program(layers)
 
     def generate_program(self, layers: list[dict[str, Any]]) -> Sequence[Mapping[str, Any]]:
@@ -401,15 +401,26 @@ class QuantumRouter:
         filename (str): The filename to save the program.
         """
         assert filename.endswith('.json'), "program should be saved to a .json file"
-        assert len(self.movement_list) == 2*len(self.before_maps)-1, "before generate program, movement should be finished"
-        program = self.initialize_program()
-        for i,movements in enumerate(self.movement_list):
-            layers = []
-            layer = map_to_layer(self.before_maps[i])
-            for mov in movements:
-                layers.append(self.update_layer(layer,mov))
-            layers[-1]["gates"] = gates_in_layer(self.gate_list[i+1])
-            program += self.generate_program(layers)[2:]
+        # assert len(self.movement_list) == len(self.before_maps)+len(self.gate_maps), "before generate program, movement should be finished"
+        # layers = [map_to_layer(self.before_maps[0])]
+        program = []
+        for i, before_map in enumerate(self.before_maps):
+            layers=[]
+            for mov in self.movement_list[i*2]:
+                layers.append(self.update_layer(map_to_layer(before_map),mov))
+
+            for mov in self.movement_list[i*2+1]:
+                layers.append(self.update_layer(map_to_layer(self.gate_maps[i]),mov))
+            layers[-1]["gates"] = gates_in_layer(self.gate_list[i])
+
+            if i+1 < len(self.before_maps):
+                layers.append(map_to_layer(self.before_maps[i+1]))
+
+            print(f"layers: {layers}")
+            if i == 0:
+                program += self.generate_program(layers)
+            else:
+                program += self.generate_program(layers)[2:]
         with open(filename, 'w') as file:
             json.dump(program, file)
 

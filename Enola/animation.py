@@ -6,7 +6,6 @@ import matplotlib
 import networkx as nx
 import argparse
 from abc import ABC, abstractmethod
-import math
 
 
 # physics constants
@@ -1998,7 +1997,7 @@ class Animator():
             # Rydberg interaction is much shorter compared to the movements,
             # so using real speed, we will never see Rydberg.
             if inst['type'] == 'Rydberg':
-                inst['duration'] = MUS_PER_FRM * 40  # i.e., 8 frames
+                inst['duration'] = MUS_PER_FRM * 8  # i.e., 8 frames
 
             # Activate and Deactivate is on par with some movements in terms of
             # duration, but we do not have ramping-up or -down animations yet,
@@ -2109,7 +2108,6 @@ class Animator():
         return
 
     def update(self, f: int):  # f is the frame
-        print(f"update {f}")
         if f < self.keyframes[0]:
             return
         for i, inst in enumerate(self.code):
@@ -2136,9 +2134,6 @@ class Animator():
             active_qubits = []
             for g in inst['gates']:
                 active_qubits += [g['q0'], g['q1']]
-                q0_loc = [inst['state']['qubits'][g['q0']]['x'],inst['state']['qubits'][g['q0']]['y']]
-                q1_loc = [inst['state']['qubits'][g['q1']]['x'],inst['state']['qubits'][g['q1']]['y']]
-                self.draw_circles(q0_loc,q1_loc,'green')
             self.texts = [
                 self.ax.text(inst['state']['qubits'][q_id]['x'] + 1,
                              inst['state']['qubits'][q_id]['y'] + 1,
@@ -2146,7 +2141,7 @@ class Animator():
             ]
 
             # whole plane lights up (alpha=.2 blue)
-            # self.ax.set_facecolor((0, 0, 1, 0.2))
+            self.ax.set_facecolor((0, 0, 1, 0.2))
 
             # draw SLM qubits in blue and at the correct locations
             self.qubit_scat.set_offsets(
@@ -2169,19 +2164,6 @@ class Animator():
             self.ax.set_facecolor('w')
             for text in self.texts:
                 text.remove()
-
-    def draw_circles(self, q0_loc, q1_loc, color='blue'):
-        distance = math.sqrt((q1_loc[0] - q0_loc[0])**2 + (q1_loc[1] - q0_loc[1])**2)
-        radius = distance/2
-        for center in [q0_loc,q1_loc]:
-            # print(f"center loc:{center}, radius:{radius}")
-            circle = matplotlib.patches.Circle(center, radius, edgecolor=color, facecolor='#eafff5',linestyle='--', linewidth=1, alpha=0.5)
-            self.ax.add_patch(circle)
-
-    def clear_patches(self):
-        patches = [p for p in self.ax.patches]
-        for p in patches:
-            p.remove()
 
     def interpolate(self, progress: int, duration: int, begin: int, end: int):
         """implement cubic interpolation per Bluvstein et al.
@@ -2228,7 +2210,6 @@ class Animator():
         return
 
     def update_activate(self, f: int, inst: dict):
-        self.clear_patches()
         if f == inst['f_begin']:
             self.title.set_text(inst['name'])
 
@@ -2296,7 +2277,7 @@ if __name__ == "__main__":
 
     with open(args.input_file, 'r') as f:
         data = json.load(f)
-    
+
     param = {
     "R_B": 6,
     "AOD_SEP": 2,
@@ -2309,12 +2290,6 @@ if __name__ == "__main__":
     }
     set_hardware_paramters(param)
 
-    
-    filename = args.input_file.split("/")[-1]
-    filename = filename.split("_")
-    num_qubit = int(filename[1])
-    trial = int(filename[2])
-
 
 
     Animator(
@@ -2323,7 +2298,7 @@ if __name__ == "__main__":
         font=args.font if args.font else 10,
         ffmpeg=args.ffmpeg if args.ffmpeg else 'ffmpeg',
         real_speed=args.realSpeed,
-        show_graph=False,
+        show_graph= False,
         edges=[],
-        dir=args.dir if args.dir else './results/animations/'
+        dir=args.dir if args.dir else './'
     )
