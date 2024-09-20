@@ -162,7 +162,7 @@ class QuantumRouter:
         self.num_qubits = num_qubits
         self.validate_embeddings(before_maps)
         self.before_maps = before_maps
-        
+        self.gate_maps = []
         assert len(before_maps) == len(gate_list), "The number of embeddings should match the number of two-qubit gates in gate_list."
         self.gate_list = gate_list
 
@@ -186,7 +186,6 @@ class QuantumRouter:
     def validate_architecture_size(self, arch_size: list[int]) -> None:
         """
         Validate the architecture size to ensure it can accommodate all qubits.
-        
         Parameters:
         arch_size (list[int]): Architecture size as [x, y].
         """
@@ -235,41 +234,43 @@ class QuantumRouter:
         Process all maps to resolve movements and update the program.
         """
         for current_pos in range(len(self.before_maps) - 1):
-            movements, gate_maps = self.move_to_excute_gate(current_pos)
+            movements, gate_map = self.move_to_excute_gate(current_pos)
             assert len(movements) > 0, "there should be some movements between embeddings"
+            self.gate_maps.append(gate_map)
             self.movement_list.append(movements)
-            movements = self.move_to_before_map(current_pos, gate_maps)
+            movements = self.move_to_before_map(current_pos, gate_map)
             assert len(movements) > 0, "there should be some movements between embeddings"
             self.movement_list.append(movements)
 
-        movements, _ = self.move_to_excute_gate(-1)
+        movements, gate_map = self.move_to_excute_gate(-1)
         assert len(movements) > 0, "there should be some movements between embeddings"
+        self.gate_maps.append(gate_map)
         self.movement_list.append(movements)
 
     def move_to_excute_gate(self,current_pos:int):
-        gate_maps = self.get_gate_maps(current_pos)
-        movements = get_movements(self.before_maps[current_pos], gate_maps)
+        gate_map = self.get_gate_maps(current_pos)
+        movements = get_movements(self.before_maps[current_pos], gate_map)
         sorted_movements = sorted(movements.keys(), key=lambda k: math.dist(movements[k][:2], movements[k][2:]))
         violations = self.check_violations(sorted_movements, movements)
         move_sequences = self.handle_violations(violations, movements, sorted_movements, current_pos)
         # print(current_pos)
-        gate_maps = copy.deepcopy(self.before_maps[current_pos])
+        gate_map = copy.deepcopy(self.before_maps[current_pos])
         for movements in move_sequences:
             for move in movements:
                 # print(move)
                 qubit = move[0]
-                assert move[1] == gate_maps[qubit], f"qubit should move form {gate_maps[qubit]}, now in {move[1]}"
-                gate_maps[qubit] = move[2]
+                assert move[1] == gate_map[qubit], f"qubit should move form {gate_map[qubit]}, now in {move[1]}"
+                gate_map[qubit] = move[2]
         # print(f"gate maps:{gate_maps}")
-        return move_sequences, gate_maps
+        return move_sequences, gate_map
 
     def get_gate_maps(self, current_pos:int ):
         gate_maps = copy.deepcopy(self.before_maps[current_pos])
         for q0, q1 in self.gate_list[current_pos]:
             gate_maps[q0], gate_maps[q1] = gate_maps[q1], gate_maps[q0]
         return gate_maps
-    def move_to_before_map(self, current_pos:int, gate_maps):
-        movements = get_movements(gate_maps, self.before_maps[current_pos+1])
+    def move_to_before_map(self, current_pos:int, gate_map):
+        movements = get_movements(gate_map, self.before_maps[current_pos+1])
         sorted_movements = sorted(movements.keys(), key=lambda k: math.dist(movements[k][:2], movements[k][2:]))
         violations = self.check_violations(sorted_movements, movements)
         move_sequences = self.handle_violations(violations, movements, sorted_movements)
@@ -400,7 +401,7 @@ class QuantumRouter:
         filename (str): The filename to save the program.
         """
         assert filename.endswith('.json'), "program should be saved to a .json file"
-        assert len(self.movement_list) == len(self.before_maps)-1, "before generate program, movement should be finished"
+        assert len(self.movement_list) == 2*len(self.before_maps)-1, "before generate program, movement should be finished"
         program = self.initialize_program()
         for i,movements in enumerate(self.movement_list):
             layers = []
