@@ -259,7 +259,7 @@ class QuantumRouter:
                 print(move)
                 qubit = move[0]
                 assert move[1] == gate_maps[qubit], f"qubit should move form {gate_maps[qubit]}, now in {move[1]}"
-                gate_maps[qubit] = move[1]
+                gate_maps[qubit] = move[2]
         print(f"gate maps:{gate_maps}")
         return move_sequences, gate_maps
 
@@ -306,7 +306,7 @@ class QuantumRouter:
             # Remove resolved violations
             violations = [v for v in violations if qubit not in v]
             del movements[qubit]
-            if current_pos:
+            if current_pos != None:
                 print(f"qubit:{qubit}, pos:{current_pos}, gate:{self.gate_list[current_pos]}")
                 for q0,q1 in self.gate_list[current_pos]:
                     if q0 == qubit:
