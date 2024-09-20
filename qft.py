@@ -53,7 +53,7 @@ class QFT:
 
     def LNN_maps(self) -> list[list[int]]:
         maps = []
-        current_map = [[1,i+1] for i in range(self.num_qubits)]
+        current_map = [(1,i+1) for i in range(self.num_qubits)]
 
         def swap_qubits_by_move(locations, qubits_pair):
             new_loc = copy.deepcopy(locations)
