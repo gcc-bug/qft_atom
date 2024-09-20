@@ -248,26 +248,36 @@ class QuantumRouter:
 
     def move_to_excute_gate(self,current_pos:int):
         gate_maps = self.get_gate_maps(current_pos)
-        # print(gate_maps)
         movements = get_movements(self.before_maps[current_pos], gate_maps)
         sorted_movements = sorted(movements.keys(), key=lambda k: math.dist(movements[k][:2], movements[k][2:]))
         violations = self.check_violations(sorted_movements, movements)
         move_sequences = self.handle_violations(violations, movements, sorted_movements, current_pos)
+        print(current_pos)
+        gate_maps = copy.deepcopy(self.before_maps[current_pos])
+        for movements in move_sequences:
+            for move in movements:
+                print(move)
+                qubit = move[0]
+                assert move[1] == gate_maps[qubit], f"qubit should move form {gate_maps[qubit]}, now in {move[1]}"
+                gate_maps[qubit] = move[1]
+        print(f"gate maps:{gate_maps}")
         return move_sequences, gate_maps
 
     def get_gate_maps(self, current_pos:int ):
         gate_maps = copy.deepcopy(self.before_maps[current_pos])
         for q0, q1 in self.gate_list[current_pos]:
-            gate_maps[q0] = gate_maps[q1]
+            gate_maps[q0], gate_maps[q1] = gate_maps[q1], gate_maps[q0]
         return gate_maps
     def move_to_before_map(self, current_pos:int, gate_maps):
         movements = get_movements(gate_maps, self.before_maps[current_pos+1])
         sorted_movements = sorted(movements.keys(), key=lambda k: math.dist(movements[k][:2], movements[k][2:]))
         violations = self.check_violations(sorted_movements, movements)
-        move_sequences = self.handle_violations(violations, movements, sorted_movements, current_pos)
+        move_sequences = self.handle_violations(violations, movements, sorted_movements)
         return move_sequences
 
-    def solve_violations(self, movements, violations, sorted_keys):
+    def dual_move_to_excute_gate(self, current_pos: int):
+        pass
+    def solve_violations(self, movements, violations, sorted_keys, current_pos):
         """
         Resolves violations in qubit movements based on the routing strategy.
 
@@ -284,7 +294,7 @@ class QuantumRouter:
             resolution_order = maximalis_solve(sorted_keys, violations)
         else:
             resolution_order = maximalis_solve_sort(self.num_q, violations, sorted_keys)
-        # print(f'Resolution Order: {resolution_order}')
+        print(f'Resolution Order: {resolution_order}')
         move_sequence =[]
         for qubit in resolution_order:
             sorted_keys.remove(qubit)
@@ -296,7 +306,22 @@ class QuantumRouter:
             # Remove resolved violations
             violations = [v for v in violations if qubit not in v]
             del movements[qubit]
-        
+            if current_pos:
+                print(f"qubit:{qubit}, pos:{current_pos}, gate:{self.gate_list[current_pos]}")
+                for q0,q1 in self.gate_list[current_pos]:
+                    if q0 == qubit:
+                        sorted_keys.remove(q1)
+                        violations = [v for v in violations if q1 not in v]
+                        del movements[q1]
+                        break
+                    elif q1 == qubit:
+                        sorted_keys.remove(q0)
+                        violations = [v for v in violations if q0 not in v]
+                        del movements[q0]
+                        break
+                    else:
+                        pass
+
         return movements, violations, move_sequence
 
     def resolve_movements(self, current_pos: int) -> list[int, tuple[int, int], tuple[int, int]]:
@@ -316,7 +341,7 @@ class QuantumRouter:
         move_sequences = self.handle_violations(violations, movements, sorted_movements, current_pos)
         return move_sequences
 
-    def handle_violations(self, violations: list[tuple[int, int]], remained_mov_map: dict[int, tuple[int, int, int, int]], sorted_movements: list[int], current_pos: int) -> list[int, tuple[int, int], tuple[int, int]]:
+    def handle_violations(self, violations: list[tuple[int, int]], remained_mov_map: dict[int, tuple[int, int, int, int]], sorted_movements: list[int], current_pos=None) -> list[int, tuple[int, int], tuple[int, int]]:
         """
         Handle violations and return the movement sequence accordingly.
         
@@ -331,7 +356,7 @@ class QuantumRouter:
         """
         movement_sequence =[]
         while remained_mov_map:
-            remained_mov_map, violations, movement = self.solve_violations(remained_mov_map, violations, sorted_movements)
+            remained_mov_map, violations, movement = self.solve_violations(remained_mov_map, violations, sorted_movements,current_pos)
             movement_sequence.append(movement)
 
         return movement_sequence
