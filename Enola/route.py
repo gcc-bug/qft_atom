@@ -222,8 +222,8 @@ class QuantumRouter:
             "g_q": self.gate_list,
             "n_x": self.arch_size[0],
             "n_y": self.arch_size[1],
-            "n_r": self.arch_size[0],
-            "n_c": self.arch_size[1]
+            "n_c": self.arch_size[0],
+            "n_r": self.arch_size[1]
         }
         code_gen = CodeGen(data)
         program = code_gen.builder(no_transfer=False)
@@ -409,14 +409,18 @@ class QuantumRouter:
             for mov in self.movement_list[i*2]:
                 layers.append(self.update_layer(map_to_layer(before_map),mov))
 
-            for mov in self.movement_list[i*2+1]:
-                layers.append(self.update_layer(map_to_layer(self.gate_maps[i]),mov))
-            layers[-1]["gates"] = gates_in_layer(self.gate_list[i])
-
             if i+1 < len(self.before_maps):
+                for mov in self.movement_list[i*2+1]:
+                    # print(i)
+                    layers.append(self.update_layer(map_to_layer(self.gate_maps[i]),mov))
+                layers[-1]["gates"] = gates_in_layer(self.gate_list[i])
                 layers.append(map_to_layer(self.before_maps[i+1]))
+            else:
+                layers.append(map_to_layer(self.gate_maps[i]))
+                layers[-1]["gates"] = gates_in_layer(self.gate_list[i])
 
-            print(f"layers: {layers}")
+
+            # print(f"layers: {layers}")
             if i == 0:
                 program += self.generate_program(layers)
             else:
