@@ -7,7 +7,7 @@ import copy
 basis_gate_set=["cz", "id", "u1", "u2", "u3"]
 
 def linear_map(n:int):
-    m = [[1,i+1] for i in range(n)]
+    m = [(1,i+1) for i in range(n)]
     return m
 import copy
 def fold_map(n:int, c: int, start_x = 0, start_y = 0):
@@ -89,6 +89,8 @@ class QFT:
     def LNN_maps(self) -> list[list[int]]:
         maps = []
         current_map = fold_map(self.num_qubits,8, 1, 1)
+        # current_map = linear_map(self.num_qubits)
+        
 
         def swap_qubits_by_move(locations, qubits_pair):
             new_loc = copy.deepcopy(locations)
