@@ -294,9 +294,12 @@ class QuantumRouter:
         if self.routing_strategy == "maximalis":
             resolution_order = maximalis_solve(sorted_keys, violations)
         else:
-            resolution_order = maximalis_solve_sort(self.num_q, violations, sorted_keys)
+            resolution_order = maximalis_solve_sort(self.num_qubits, violations, sorted_keys)
         # print(f'Resolution Order: {resolution_order}')
         move_sequence =[]
+        if 2*len(resolution_order) != len(movements) and current_pos:
+            # print(current_pos,len(resolution_order),len(movements))
+            print(f"{current_pos} move still live, it have:\n{movements}\n violations:\n{violations}\n gate list:\n{self.gate_list[current_pos]}")
         for qubit in resolution_order:
             sorted_keys.remove(qubit)
 
@@ -405,6 +408,7 @@ class QuantumRouter:
         # layers = [map_to_layer(self.before_maps[0])]
         program = []
         for i, before_map in enumerate(self.before_maps):
+            print(i)
             layers=[]
             for mov in self.movement_list[i*2]:
                 layers.append(self.update_layer(map_to_layer(before_map),mov))
@@ -420,7 +424,7 @@ class QuantumRouter:
                 layers[-1]["gates"] = gates_in_layer(self.gate_list[i])
 
 
-            # print(f"layers: {layers}")
+            print(f"layers: {layers}")
             if i == 0:
                 program += self.generate_program(layers)
             else:
