@@ -8,6 +8,16 @@ from typing import Sequence, Mapping, Any
 
 global_dict["full_code"] = True
 
+def direction_vector(dx, dy):
+    if dx == 0:  # Vertical movement (up or down)
+        return (0, 1) if dy > 0 else (0, -1)
+    elif dy == 0:  # Horizontal movement (left or right)
+        return (1, 0) if dx > 0 else (-1, 0)
+    else:
+        # For diagonal or other movements, return the direction tuple directly (no normalization)
+        return (dx // abs(dx), dy // abs(dy))
+        
+        
 def compatible_2D(a: list[int], b: list[int]) -> bool:
     """
     Checks if two 2D points are compatible based on specified rules.
@@ -250,7 +260,12 @@ class QuantumRouter:
     def move_to_excute_gate(self,current_pos:int):
         gate_map = self.get_gate_maps(current_pos)
         movements = get_movements(self.before_maps[current_pos], gate_map)
-        sorted_movements = sorted(movements.keys(), key=lambda k: math.dist(movements[k][:2], movements[k][2:]))
+        sorted_movements = sorted(
+            movements.keys(),
+            key=lambda k: (direction_vector(movements[k][2] - movements[k][0], movements[k][3] - movements[k][1]),  # Direction vector (Δx, Δy)
+                        math.dist(movements[k][:2], movements[k][2:]))  # distance
+        )
+        
         violations = self.check_violations(sorted_movements, movements)
         move_sequences = self.handle_violations(violations, movements, sorted_movements, current_pos)
         # print(current_pos)
@@ -271,7 +286,12 @@ class QuantumRouter:
         return gate_maps
     def move_to_before_map(self, current_pos:int, gate_map):
         movements = get_movements(gate_map, self.before_maps[current_pos+1])
-        sorted_movements = sorted(movements.keys(), key=lambda k: math.dist(movements[k][:2], movements[k][2:]))
+        sorted_movements = sorted(
+            movements.keys(),
+            key=lambda k: (direction_vector(movements[k][2] - movements[k][0], movements[k][3] - movements[k][1]),  # Direction vector (Δx, Δy)
+                        math.dist(movements[k][:2], movements[k][2:]))  # distance
+        )
+        
         violations = self.check_violations(sorted_movements, movements)
         move_sequences = self.handle_violations(violations, movements, sorted_movements)
         return move_sequences
@@ -297,9 +317,9 @@ class QuantumRouter:
             resolution_order = maximalis_solve_sort(self.num_qubits, violations, sorted_keys)
         # print(f'Resolution Order: {resolution_order}')
         move_sequence =[]
-        if 2*len(resolution_order) != len(movements) and current_pos:
-            # print(current_pos,len(resolution_order),len(movements))
-            print(f"{current_pos} move still live, it have:\n{movements}\n violations:\n{violations}\n gate list:\n{self.gate_list[current_pos]}")
+        # if 2*len(resolution_order) != len(movements) and current_pos:
+        #     # print(current_pos,len(resolution_order),len(movements))
+        #     print(f"{current_pos} move still live, it have:\nmovements={movements}\n violations={violations}\n gate list:\n{self.gate_list[current_pos]}\n")
         for qubit in resolution_order:
             sorted_keys.remove(qubit)
 
@@ -408,7 +428,7 @@ class QuantumRouter:
         # layers = [map_to_layer(self.before_maps[0])]
         program = []
         for i, before_map in enumerate(self.before_maps):
-            print(i)
+            # print(i)
             layers=[]
             for mov in self.movement_list[i*2]:
                 layers.append(self.update_layer(map_to_layer(before_map),mov))
@@ -424,7 +444,7 @@ class QuantumRouter:
                 layers[-1]["gates"] = gates_in_layer(self.gate_list[i])
 
 
-            print(f"layers: {layers}")
+            # print(f"layers: {layers}")
             if i == 0:
                 program += self.generate_program(layers)
             else:
