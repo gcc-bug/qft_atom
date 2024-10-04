@@ -5,6 +5,41 @@ from numpy import pi
 import copy
 
 basis_gate_set=["cz", "id", "u1", "u2", "u3"]
+
+def linear_map(n:int):
+    m = [[1,i+1] for i in range(n)]
+    return m
+import copy
+def fold_map(n:int, c: int, start_x = 0, start_y = 0):
+    assert n >= 2
+    if c%2 :
+        c-=1
+    x_dir = 1 # 1 to right, -1 to left
+    y_dir = 1 # 1 to up, -1 to down
+    bottom_line = True
+    m = []
+    pos = (start_x,start_y)
+    new_pos = pos
+    for i in range(n):
+        m.append(new_pos)
+        if i%2:
+            new_pos = (pos[0], pos[1]+ y_dir*1)
+            y_dir *= -1
+        else:
+            new_pos = (pos[0]+ x_dir*1, pos[1])
+            if new_pos[0] in [start_x,c+start_x]:
+                bottom_line = False
+                x_dir *= -1
+                y_dir *= -1
+            elif new_pos[0] in [start_x+1,c+start_x-1] and not bottom_line:
+                bottom_line = True
+                y_dir *= -1
+        pos = new_pos
+
+    if m[-1][0] == m[-2][0] and m[-1][0] in [start_x,c+start_x]:
+        assert m[-1][1] -m[-2][1] == 1, f"qubit {n-1} in {m[-1][0],m[-1][1]}, and qubit {n-2} in {m[-2][0],m[-2][1]}"
+        m[-1][1] = (m[-2][0],m[-2][1]-1)
+    return m
 class QFT:
     def __init__(self, num_qubits: int) -> None:
         """
@@ -53,7 +88,7 @@ class QFT:
 
     def LNN_maps(self) -> list[list[int]]:
         maps = []
-        current_map = [(1,i+1) for i in range(self.num_qubits)]
+        current_map = fold_map(self.num_qubits,8, 1, 1)
 
         def swap_qubits_by_move(locations, qubits_pair):
             new_loc = copy.deepcopy(locations)
