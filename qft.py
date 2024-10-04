@@ -38,7 +38,7 @@ def fold_map(n:int, c: int, start_x = 0, start_y = 0):
 
     if m[-1][0] == m[-2][0] and m[-1][0] in [start_x,c+start_x]:
         assert m[-1][1] -m[-2][1] == 1, f"qubit {n-1} in {m[-1][0],m[-1][1]}, and qubit {n-2} in {m[-2][0],m[-2][1]}"
-        m[-1][1] = (m[-2][0],m[-2][1]-1)
+        m[-1] = (m[-2][0],m[-2][1]-1)
     return m
 class QFT:
     def __init__(self, num_qubits: int) -> None:
@@ -70,7 +70,7 @@ class QFT:
                 theta = pi/(2**(j-i))
                 quantum_circuit.cp(theta,i,j)
 
-        return transpile(quantum_circuit, basis_gates=basis_gate_set, optimization_level=3)
+        return transpile(quantum_circuit, basis_gates=basis_gate_set, optimization_level= 0)
 
     def _split_gates(self):
         gates_list = []
