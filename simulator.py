@@ -54,13 +54,16 @@ class Simulator():
         self.cir_fidelity_1q_gate = 1
         self.cir_fidelity_atom_transfer = 1
         self.cir_fidelity_coherence = 1
+        self.cir_fidelity_coherence_big =1
         self.cir_qubit_idle_time = [0 for i in range(self.n_qubit)]
+        self.cir_qubit_idle_time_big = [0 for i in range(self.n_qubit)]
         num_two_qubit_gate = 0
         num_gate_stage = 0
         num_transfer = 0
         num_movement_stage = 0
         list_movement_duration = []
         list_atom_transfer_duration = []
+        num_Bigmov = 0
         for instruction in self.list_instrcution:
             duration = instruction["duration"]
             if instruction["type"] == "Init":
@@ -102,6 +105,9 @@ class Simulator():
                 if duration > 1e-4:
                     for i in range(self.n_qubit):
                         self.cir_qubit_idle_time[i] += duration
+                    if "Big" in instruction["name"]:
+                        num_Bigmov += 1
+                        self.cir_qubit_idle_time_big[i] += duration
                     num_movement_stage += 1
                     list_movement_duration.append(duration)
             else:
@@ -115,6 +121,8 @@ class Simulator():
         # print(self.coherence_time)
         for t in self.cir_qubit_idle_time:
             self.cir_fidelity_coherence *= (1 - t/self.coherence_time)
+        for t in self.cir_qubit_idle_time_big:
+            self.cir_fidelity_coherence_big *= (1 - t/self.coherence_time)
         self.cir_fidelity = self.cir_fidelity_1q_gate * self.cir_fidelity_2q_gate * self.cir_fidelity_2q_gate_for_idle \
                             * self.cir_fidelity_atom_transfer * self.cir_fidelity_coherence
         total_movement_time = sum(list_movement_duration)
@@ -124,10 +132,12 @@ class Simulator():
                     "cir_fidelity_2q_gate_for_idle": self.cir_fidelity_2q_gate_for_idle,
                     "cir_fidelity_atom_transfer": self.cir_fidelity_atom_transfer,
                     "cir_fidelity_coherence": self.cir_fidelity_coherence,
+                    "cir_fidelity_coherence_big":self.cir_fidelity_coherence_big,
                     "num_two_qubit_gate": num_two_qubit_gate,
                     "num_gate_stage": num_gate_stage,
                     "num_transfer": num_transfer,
                     "num_movement_stage": num_movement_stage,
+                    "num_big_move":num_Bigmov,
                     "movement_time_ratio": [ total_movement_time/self.cir_qubit_idle_time[i] for i in range(self.n_qubit) ],
                     "average_movement": sum(list_movement_duration) / len(list_movement_duration) ,
                     "list_movement_duration": list_movement_duration}
