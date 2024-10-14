@@ -6,8 +6,11 @@ import copy
 
 basis_gate_set=["cz", "id", "u1", "u2", "u3"]
 
-def linear_map(n:int):
-    m = [(1,i+1) for i in range(n)]
+def linear_map(n:int, col = True):
+    if col:
+        m = [(i,0) for i in range(n)]
+    else :
+        m = [(0,i) for i in range(n)]
     return m
 import copy
 def fold_map(n:int, c: int, start_x = 0, start_y = 0):
@@ -86,10 +89,15 @@ class QFT:
     def draw(self) -> None:
         display(self.full_circuit.draw('mpl'))
 
-    def LNN_maps(self) -> list[list[int]]:
+    def LNN_maps(self,c =0,) -> list[list[int]]:
         maps = []
-        current_map = fold_map(self.num_qubits,8, 1, 1)
-        # current_map = linear_map(self.num_qubits)
+        if c>=2:
+            current_map = fold_map(self.num_qubits,c, 1, 1)
+        else:
+            if c < 0 :
+                current_map = linear_map(self.num_qubits, True)
+            else:
+                current_map = linear_map(self.num_qubits, False)
         
 
         def swap_qubits_by_move(locations, qubits_pair):
