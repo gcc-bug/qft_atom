@@ -1,4 +1,4 @@
-c,cir_fidelity,cir_fidelity_1q_gate,cir_fidelity_2q_gate,cir_fidelity_2q_gate_for_idle,cir_fidelity_atom_transfer,cir_fidelity_coherence,num_two_qubit_gate,num_gate_stage,num_transfer,num_movement_stage,average_movement
+qft 20 c,cir_fidelity,cir_fidelity_1q_gate,cir_fidelity_2q_gate,cir_fidelity_2q_gate_for_idle,cir_fidelity_atom_transfer,cir_fidelity_coherence,num_two_qubit_gate,num_gate_stage,num_transfer,num_movement_stage,average_movement
 0,0.001303088,1,0.148857487,0.164926764,0.218983366,0.242382157,380,74,1518,2424,32.49907884
 2,0.001309157,1,0.148857487,0.164926764,0.218983366,0.243511135,380,74,1518,2424,32.36513059
 4,0.002311451,1,0.148857487,0.164926764,0.218983366,0.429943808,380,74,1518,1416,34.0633495
@@ -8,3 +8,10 @@ c,cir_fidelity,cir_fidelity_1q_gate,cir_fidelity_2q_gate,cir_fidelity_2q_gate_fo
 12,0.003251526,1,0.148857487,0.164926764,0.218983366,0.60480355,380,74,1518,792,37.5343356
 14,0.003251526,1,0.148857487,0.164926764,0.218983366,0.60480355,380,74,1518,792,37.5343356
 -2,0.003583033,1,0.148857487,0.164926764,0.218983366,0.666465761,380,74,1518,588,41.92059908
+,,,,,,,,,,,
+qft 50 c,cir_fidelity,cir_fidelity_1q_gate,cir_fidelity_2q_gate,cir_fidelity_2q_gate_for_idle,cir_fidelity_atom_transfer,cir_fidelity_coherence,num_two_qubit_gate,num_gate_stage,num_transfer,num_movement_stage,average_movement
+0,3.95E-27,1,4.64E-06,6.05E-06,5.53E-05,2.54E-12,2450,194,9798,15084,31.20823409
+8,1.52E-18,1,4.64E-06,6.05E-06,5.53E-05,0.000980895,2450,194,9798,4500,33.34731481
+24,4.84E-17,1,4.64E-06,6.05E-06,5.53E-05,0.031148135,2450,194,9798,2148,37.27478203
+26,5.09E-17,1,4.64E-06,6.05E-06,5.53E-05,0.032747831,2450,194,9798,2112,37.4165566
+-2,1.02E-16,1,4.64E-06,6.05E-06,5.53E-05,0.065939029,2450,194,9798,1548,41.93579656
