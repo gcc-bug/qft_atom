@@ -15,7 +15,7 @@ SITE_SLMS = 2  # number of SLMs in a site
 SLM_SEP = AOD_SEP  # separation of SLMs inside a site
 SITE_WIDTH = 4  # total width of SLMs in a site
 X_SITE_SEP = RYD_SEP + SITE_WIDTH  # separation of sites in X direction
-Y_SITE_SEP = RYD_SEP  # separation of sites in Y direction
+Y_SITE_SEP = RYD_SEP + SITE_WIDTH # separation of sites in Y direction
 
 # padding of the figure
 X_LOW_PAD = 2 * AOD_SEP
@@ -369,6 +369,7 @@ class Move(Inst):
         data = {}
         # calculate the max  move distance of columns
         data['cols'] = []
+        data['distance'] = []
         max_distance = 0
         for i in range(len(col_idx)):
             distance = abs(col_end[i]-col_begin[i])
@@ -379,6 +380,7 @@ class Move(Inst):
                      'begin': col_begin[i],
                      'end': col_end[i]})
                 col_objs[col_idx[i]].x = col_end[i]
+                # data['distance'].append(distance/X_SITE_SEP)
                 max_distance = max(max_distance, distance)
 
         # calculate the max  move distance of rows
@@ -392,9 +394,11 @@ class Move(Inst):
                      'begin': row_begin[i],
                      'end': row_end[i]})
                 row_objs[row_idx[i]].y = row_end[i]
+                # data['distance'].append(distance/Y_SITE_SEP)
                 max_distance = max(max_distance, distance)
 
         # movement time per Bluvstein et al. units are us and um.
+        data['distance'].append(max_distance/X_SITE_SEP)
         self.duration = 200*((max_distance/110)**(1/2))
         data['duration'] = self.duration
 
@@ -1328,7 +1332,7 @@ class CodeGen():
         self.n_t = len(self.layers)
         # print(self.n_t)
 
-        r"""change of convention. In solve() and the SMT model, a/c/r_s govern
+        """change of convention. In solve() and the SMT model, a/c/r_s govern
         the movement from stage s to stage s+1, i.e.,
             ----------- x/y_0 
             | a/c/r_0 |
@@ -1496,25 +1500,24 @@ class CodeGen():
 
         # when there are more than one qubit in a site at the beginning,
         # need to put one of them in the right trap.
-        if len(self.layers) > 1:
-            for g in self.layers[0]['gates'] :
-                a0 = self.layers[1]['qubits'][g['q0']]['a']
-                a1 = self.layers[1]['qubits'][g['q1']]['a']
-                x_left = X_SITE_SEP * self.layers[0]['qubits'][g['q0']]['x']
-                x_right = x_left + SITE_WIDTH
-                y = Y_SITE_SEP * self.layers[0]['qubits'][g['q0']]['y']
+        for g in self.layers[0]['gates']:
+            a0 = self.layers[1]['qubits'][g['q0']]['a']
+            a1 = self.layers[1]['qubits'][g['q1']]['a']
+            x_left = X_SITE_SEP * self.layers[0]['qubits'][g['q0']]['x']
+            x_right = x_left + SITE_WIDTH
+            y = Y_SITE_SEP * self.layers[0]['qubits'][g['q0']]['y']
 
-                # if both atoms are in AOD, use their column indices to decide
-                # which one to put in the left trap and which one to the right
-                # if they have the same col index, the order does not matter
-                # in Reload, we will pick them up in different rows.
-                if (a0 == 1
-                    and a1 == 1
-                    and self.layers[1]['qubits'][g['q0']]['c'] >
-                        self.layers[1]['qubits'][g['q1']]['c']):
-                    slm_qubit_xys[g['q0']] = (x_right, y)
-                else:
-                    slm_qubit_xys[g['q1']] = (x_right, y)
+            # if both atoms are in AOD, use their column indices to decide
+            # which one to put in the left trap and which one to the right
+            # if they have the same col index, the order does not matter
+            # in Reload, we will pick them up in different rows.
+            if (a0 == 1
+                and a1 == 1
+                and self.layers[1]['qubits'][g['q0']]['c'] >
+                    self.layers[1]['qubits'][g['q1']]['c']):
+                slm_qubit_xys[g['q0']] = (x_right, y)
+            else:
+                slm_qubit_xys[g['q1']] = (x_right, y)
 
         init = Init(cols, rows, qubits,
                     slm_qubit_idx=slm_qubit_idx,
