@@ -13,10 +13,10 @@ def linear_map(n:int, col = True):
         m = [(0,i) for i in range(n)]
     return m
 import copy
-def fold_map(n:int, c: int, start_x = 0, start_y = 0):
+def fold_map(n:int, width: int, start_x = 0, start_y = 0):
     assert n >= 2
-    if c%2 :
-        c-=1
+    if width%2 :
+        width-=1
     x_dir = 1 # 1 to right, -1 to left
     y_dir = 1 # 1 to up, -1 to down
     bottom_line = True
@@ -30,16 +30,16 @@ def fold_map(n:int, c: int, start_x = 0, start_y = 0):
             y_dir *= -1
         else:
             new_pos = (pos[0]+ x_dir*1, pos[1])
-            if new_pos[0] in [start_x,c+start_x]:
+            if new_pos[0] in [start_x,width+start_x]:
                 bottom_line = False
                 x_dir *= -1
                 y_dir *= -1
-            elif new_pos[0] in [start_x+1,c+start_x-1] and not bottom_line:
+            elif new_pos[0] in [start_x+1,width+start_x-1] and not bottom_line:
                 bottom_line = True
                 y_dir *= -1
         pos = new_pos
 
-    if m[-1][0] == m[-2][0] and m[-1][0] in [start_x,c+start_x]:
+    if m[-1][0] == m[-2][0] and m[-1][0] in [start_x,width+start_x]:
         assert m[-1][1] -m[-2][1] == 1, f"qubit {n-1} in {m[-1][0],m[-1][1]}, and qubit {n-2} in {m[-2][0],m[-2][1]}"
         m[-1] = (m[-2][0],m[-2][1]-1)
     return m
@@ -89,12 +89,12 @@ class QFT:
     def draw(self) -> None:
         display(self.full_circuit.draw('mpl'))
 
-    def LNN_maps(self,c =0,) -> list[list[int]]:
+    def LNN_maps(self,width =0,) -> list[list[int]]:
         maps = []
-        if c>=2:
-            current_map = fold_map(self.num_qubits,c, 1, 1)
+        if width>=2:
+            current_map = fold_map(self.num_qubits,width, 0, 1)
         else:
-            if c < 0 :
+            if width < 0 :
                 current_map = linear_map(self.num_qubits, True)
             else:
                 current_map = linear_map(self.num_qubits, False)

@@ -423,6 +423,7 @@ class QuantumRouter:
         Parameters:
         filename (str): The filename to save the program.
         """
+        print(filename)
         assert filename.endswith('.json'), "program should be saved to a .json file"
         # assert len(self.movement_list) == len(self.before_maps)+len(self.gate_maps), "before generate program, movement should be finished"
         # layers = [map_to_layer(self.before_maps[0])]
