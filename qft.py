@@ -3,6 +3,7 @@ from qiskit.converters import circuit_to_dag, dag_to_circuit
 from IPython.display import display
 from numpy import pi
 import copy
+import random
 
 basis_gate_set=["cz", "id", "u1", "u2", "u3"]
 
@@ -55,6 +56,9 @@ class QFT:
         self.full_circuit = self._initialize_circuit()
         self.cz_circuit = get_cz_circuit(self.full_circuit)
         self.gate_list = self._split_gates()
+        self.ifQft = True
+        self.qaoa: list[bool] = [True for _ in range(len(self.gate_list))]
+        self.maps = None
 
     def _initialize_circuit(self) -> tuple[QuantumCircuit, list[list[int]]]:
         """
@@ -99,13 +103,6 @@ class QFT:
             else:
                 current_map = linear_map(self.num_qubits, False)
         
-
-        def swap_qubits_by_move(locations, qubits_pair):
-            new_loc = copy.deepcopy(locations)
-            for q0,q1 in qubits_pair:
-                new_loc[q0], new_loc[q1] = new_loc[q1], new_loc[q0]
-            return new_loc
-
         for i, gates in enumerate(self.gate_list):
             if i%2 == 0:
                 maps.append(current_map)
@@ -113,8 +110,59 @@ class QFT:
                 new_map = swap_qubits_by_move(current_map, gates)
                 maps.append(new_map)
                 current_map = copy.deepcopy(new_map)
+        self.maps = maps
         return maps
 
+    def remove_gate(self, num_lay:int, num_gate = 1):
+        assert self.maps, "should initial the maps"
+        pick_layers = random.sample(range(len(self.gate_list)//2), num_lay)
+        
+        new_gate_list = []
+        del_gate_list = []
+        new_maps = []
+        current_map = self.maps[0]
+        for i in range(0, len(self.gate_list), 2):
+            if i//2 in pick_layers:
+                del_gates = random.sample(self.gate_list[i], num_gate)
+                del_gate_list.append(del_gates)
+                
+                gates = [gate for gate in self.gate_list[i] if gate not in del_gates]
+                if gates:
+                    new_gate_list.append(gates)
+                    new_gate_list.append(gates)
+                    new_gate_list.append([])
+                    
+                    new_maps.append(current_map)
+                    
+                    next_map = swap_qubits_by_move(current_map, gates)
+                    new_maps.append(next_map)
+                    current_map = copy.deepcopy(next_map)
+                    
+                    next_map = swap_qubits_by_move(current_map, del_gates)
+                    new_maps.append(next_map)
+                    current_map = copy.deepcopy(next_map)
+                    
+                else:
+                    new_gate_list.append([])
+                    
+                    next_map = swap_qubits_by_move(current_map, del_gates)
+                    new_maps.append(next_map)
+                    current_map = copy.deepcopy(next_map)
+            else:
+                new_gate_list.append(self.gate_list[i])
+                new_gate_list.append(self.gate_list[i])
+                
+                gates = self.gate_list[i]
+                new_maps.append(current_map)
+                next_map = swap_qubits_by_move(current_map, gates)
+                new_maps.append(next_map)
+                current_map = copy.deepcopy(next_map)
+        self.gate_list = new_gate_list
+        self.maps = new_maps
+        print(del_gate_list)
+    
+    def remove_layers(self, n:int):
+        pass
     def export_to_qasm(self, filename: str, full = True) -> None:
         """
         Export the quantum circuit to an OpenQASM file.
@@ -124,6 +172,7 @@ class QFT:
             full: bool
             Export full circuit or cz circuit
         """
+        assert self.ifQft, "only support export qft"
         if not filename.endswith('.qasm'):
             raise ValueError("The filename must end with '.qasm' to ensure proper QASM file format.")
         if full:
@@ -182,3 +231,9 @@ def get_cz_circuit(circ: QuantumCircuit)-> QuantumCircuit:
     for two_qubit_gate in gate_2q_list:
         circ.cz(two_qubit_gate[0], two_qubit_gate[1])
     return circ
+
+def swap_qubits_by_move(locations, qubits_pair):
+    new_loc = copy.deepcopy(locations)
+    for q0,q1 in qubits_pair:
+        new_loc[q0], new_loc[q1] = new_loc[q1], new_loc[q0]
+    return new_loc

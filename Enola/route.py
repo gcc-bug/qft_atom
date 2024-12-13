@@ -158,37 +158,49 @@ def gates_in_layer(gate_list:list[list[int]])->list[dict[str, int]]:
     return res
 
 class QuantumRouter:
-    def __init__(self, num_qubits: int, before_maps: list[list[list[int]]], gate_list: list[list[int]], arch_size: list[int], routing_strategy: str = "maximalis") -> None:
+    def __init__(self, num_qubits: int, 
+                 before_gate_maps: list[list[list[int]]], 
+                 gate_list: list[list[int]], 
+                 arch_size: list[int], 
+                 ignore_gate_list: list[bool] = None,
+                 routing_strategy: str = "maximalis"
+                 ) -> None:
         """
         Initialize the QuantumRouter object with the given parameters.
         
         Parameters:
         num_qubits (int): Number of qubits.
-        before_maps (list[list[list[int]]]): maps before the gate execute.
+        before_gate_maps (list[list[list[int]]]): maps before the gate execute.
         gate_list (list[list[int]]): list of two-qubit gates.
         arch_size (list[int]): Architecture size as [x, y].
         routing_strategy (str): Strategy used for routing.
         """
         self.num_qubits = num_qubits
-        self.validate_embeddings(before_maps)
-        self.before_maps = before_maps
+        self.validate_embeddings(before_gate_maps)
+        self.before_gate_maps = before_gate_maps
         self.gate_maps = []
-        assert len(before_maps) == len(gate_list), "The number of embeddings should match the number of two-qubit gates in gate_list."
+        
+        if ignore_gate_list:
+            assert len(ignore_gate_list) == len(gate_list)
+        else:
+            ignore_gate_list = [True for _ in len(gate_list)]
+        assert len(before_gate_maps) == len(gate_list), "The number of before gate maps should match the number of two-qubit gates in gate_list."
         self.gate_list = gate_list
+        self.ignore_gate_list = ignore_gate_list
 
         self.validate_architecture_size(arch_size)
         self.arch_size = arch_size
         self.routing_strategy = routing_strategy
         self.movement_list = []
 
-    def validate_embeddings(self, before_maps: list[list[list[int]]]) -> None:
+    def validate_embeddings(self, before_gate_maps: list[list[list[int]]]) -> None:
         """
         Validate the maps to ensure they contain locations for all qubits.
         
         Parameters:
-        before_maps (list[list[list[int]]]): maps before the gate execute.
+        before_gate_maps (list[list[list[int]]]): maps before the gate execute.
         """
-        for map in before_maps:
+        for map in before_gate_maps:
             assert len(map) == self.num_qubits, f"Each embedding must contain locations for all {self.num_qubits} qubits."
             for loc in map:
                 assert len(loc) == 2, "Each location must be a list containing exactly two coordinates: [x, y]."
@@ -209,8 +221,8 @@ class QuantumRouter:
         """
         Initialize the program with the initial layer and gates.
         """
-        layers = [map_to_layer(self.before_maps[0])]
-        # initial_layer = map_to_layer(self.before_maps[0])
+        layers = [map_to_layer(self.before_gate_maps[0])]
+        # initial_layer = map_to_layer(self.before_gate_maps[0])
         # initial_layer["gates"] = gates_in_layer(self.gate_list[0])
         # layers.append(initial_layer)
         return self.generate_program(layers)
@@ -243,7 +255,7 @@ class QuantumRouter:
         """
         Process all maps to resolve movements and update the program.
         """
-        for current_pos in range(len(self.before_maps) - 1):
+        for current_pos in range(len(self.before_gate_maps) - 1):
             movements, gate_map = self.move_to_excute_gate(current_pos)
             assert len(movements) > 0, "there should be some movements between embeddings"
             self.gate_maps.append(gate_map)
@@ -259,7 +271,7 @@ class QuantumRouter:
 
     def move_to_excute_gate(self,current_pos:int):
         gate_map = self.get_gate_maps(current_pos)
-        movements = get_movements(self.before_maps[current_pos], gate_map)
+        movements = get_movements(self.before_gate_maps[current_pos], gate_map)
         sorted_movements = sorted(
             movements.keys(),
             key=lambda k: (direction_vector(movements[k][2] - movements[k][0], movements[k][3] - movements[k][1]),  # Direction vector (Δx, Δy)
@@ -269,7 +281,7 @@ class QuantumRouter:
         violations = self.check_violations(sorted_movements, movements)
         move_sequences = self.handle_violations(violations, movements, sorted_movements, current_pos)
         # print(current_pos)
-        gate_map = copy.deepcopy(self.before_maps[current_pos])
+        gate_map = copy.deepcopy(self.before_gate_maps[current_pos])
         for movements in move_sequences:
             for move in movements:
                 # print(move)
@@ -280,12 +292,12 @@ class QuantumRouter:
         return move_sequences, gate_map
 
     def get_gate_maps(self, current_pos:int ):
-        gate_maps = copy.deepcopy(self.before_maps[current_pos])
+        gate_maps = copy.deepcopy(self.before_gate_maps[current_pos])
         for q0, q1 in self.gate_list[current_pos]:
             gate_maps[q0], gate_maps[q1] = gate_maps[q1], gate_maps[q0]
         return gate_maps
     def move_to_before_map(self, current_pos:int, gate_map):
-        movements = get_movements(gate_map, self.before_maps[current_pos+1])
+        movements = get_movements(gate_map, self.before_gate_maps[current_pos+1])
         sorted_movements = sorted(
             movements.keys(),
             key=lambda k: (direction_vector(movements[k][2] - movements[k][0], movements[k][3] - movements[k][1]),  # Direction vector (Δx, Δy)
@@ -359,7 +371,7 @@ class QuantumRouter:
         The list for the resolved movements.
         """
         next_pos = current_pos + 1
-        movements = get_movements(self.before_maps[current_pos], self.before_maps[next_pos])
+        movements = get_movements(self.before_gate_maps[current_pos], self.before_gate_maps[next_pos])
         sorted_movements = sorted(movements.keys(), key=lambda k: math.dist(movements[k][:2], movements[k][2:]))
         violations = self.check_violations(sorted_movements, movements)
         move_sequences = self.handle_violations(violations, movements, sorted_movements, current_pos)
@@ -425,24 +437,26 @@ class QuantumRouter:
         """
         print(filename)
         assert filename.endswith('.json'), "program should be saved to a .json file"
-        # assert len(self.movement_list) == len(self.before_maps)+len(self.gate_maps), "before generate program, movement should be finished"
-        # layers = [map_to_layer(self.before_maps[0])]
+        # assert len(self.movement_list) == len(self.before_gate_maps)+len(self.gate_maps), "before generate program, movement should be finished"
+        # layers = [map_to_layer(self.before_gate_maps[0])]
         program = []
-        for i, before_map in enumerate(self.before_maps):
+        for i, before_map in enumerate(self.before_gate_maps):
             # print(i)
             layers=[]
             for mov in self.movement_list[i*2]:
                 layers.append(self.update_layer(map_to_layer(before_map),mov))
 
-            if i+1 < len(self.before_maps):
+            if i+1 < len(self.before_gate_maps):
                 for mov in self.movement_list[i*2+1]:
                     # print(i)
                     layers.append(self.update_layer(map_to_layer(self.gate_maps[i]),mov))
-                layers[-1]["gates"] = gates_in_layer(self.gate_list[i])
-                layers.append(map_to_layer(self.before_maps[i+1]))
+                if self.ignore_gate_list[i]:
+                    layers[-1]["gates"] = gates_in_layer(self.gate_list[i])
+                layers.append(map_to_layer(self.before_gate_maps[i+1]))
             else:
                 layers.append(map_to_layer(self.gate_maps[i]))
-                layers[-1]["gates"] = gates_in_layer(self.gate_list[i])
+                if self.ignore_gate_list[i]:
+                    layers[-1]["gates"] = gates_in_layer(self.gate_list[i])
 
 
             # print(f"layers: {layers}")
