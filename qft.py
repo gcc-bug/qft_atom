@@ -115,10 +115,12 @@ class QFT:
 
     def remove_gate(self, num_lay:int, num_gate = 1):
         assert self.maps, "should initial the maps"
+        assert self.ifQft, "before move gate, the circuit should still be qft"
         pick_layers = random.sample(range(len(self.gate_list)//2), num_lay)
         
         new_gate_list = []
         del_gate_list = []
+        ignore_gate_list = []
         new_maps = []
         current_map = self.maps[0]
         for i in range(0, len(self.gate_list), 2):
@@ -128,37 +130,43 @@ class QFT:
                 
                 gates = [gate for gate in self.gate_list[i] if gate not in del_gates]
                 if gates:
+                    ignore_gate_list.extend([True,True,False])
                     new_gate_list.append(gates)
                     new_gate_list.append(gates)
-                    new_gate_list.append([])
+                    new_gate_list.append(del_gates)
                     
                     new_maps.append(current_map)
                     
                     next_map = swap_qubits_by_move(current_map, gates)
-                    new_maps.append(next_map)
                     current_map = copy.deepcopy(next_map)
                     
+                    new_maps.append(current_map)
+                    
                     next_map = swap_qubits_by_move(current_map, del_gates)
-                    new_maps.append(next_map)
                     current_map = copy.deepcopy(next_map)
+                    new_maps.append(current_map)
                     
                 else:
-                    new_gate_list.append([])
+                    ignore_gate_list.extend([False])
+                    new_gate_list.append(del_gates)
                     
+                    new_maps.append(current_map)
                     next_map = swap_qubits_by_move(current_map, del_gates)
-                    new_maps.append(next_map)
                     current_map = copy.deepcopy(next_map)
             else:
+                ignore_gate_list.extend([True,True])
                 new_gate_list.append(self.gate_list[i])
                 new_gate_list.append(self.gate_list[i])
                 
                 gates = self.gate_list[i]
                 new_maps.append(current_map)
                 next_map = swap_qubits_by_move(current_map, gates)
-                new_maps.append(next_map)
                 current_map = copy.deepcopy(next_map)
+                new_maps.append(current_map)
+                
         self.gate_list = new_gate_list
         self.maps = new_maps
+        self.qaoa = ignore_gate_list
         print(del_gate_list)
     
     def remove_layers(self, n:int):
