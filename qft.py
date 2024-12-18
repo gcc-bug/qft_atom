@@ -4,9 +4,34 @@ from IPython.display import display
 from numpy import pi
 import copy
 import random
+import math
 
 basis_gate_set=["cz", "id", "u1", "u2", "u3"]
 
+def count_num_frequencies(n, nested_list, ignore_list):
+    """
+    Calculate the frequency of each number in a nested list.
+
+    Args:
+        n (int): Upper bound of the numbers.
+        nested_list (list): The nested list structure.
+        ignore_list (list): A list of booleans indicating whether to include a sublist in the frequency count.
+
+    Returns:
+        dict: A dictionary where keys are numbers (0 to n-1) and values are their frequencies.
+    """
+    frequencies = {i: 0 for i in range(n)}
+
+    for i, sublist in enumerate(nested_list):
+        if ignore_list[i]:
+            for pair in sublist:
+                for num in pair:
+                    if 0 <= num < n:
+                        frequencies[num] += 1
+                    else:
+                        raise ValueError(f"Number {num} is out of bounds. It must be between 0 and {n-1}.")
+
+    return frequencies
 def linear_map(n:int, col = True):
     if col:
         m = [(i,0) for i in range(n)]
@@ -57,7 +82,7 @@ class QFT:
         self.cz_circuit = get_cz_circuit(self.full_circuit)
         self.gate_list = self._split_gates()
         self.ifQft = True
-        self.qaoa: list[bool] = [True for _ in range(len(self.gate_list))]
+        self.ignore_gates: list[bool] = [True for _ in range(len(self.gate_list))]
         self.maps = None
 
     def _initialize_circuit(self) -> tuple[QuantumCircuit, list[list[int]]]:
@@ -169,12 +194,49 @@ class QFT:
                 
         self.gate_list = new_gate_list
         self.maps = new_maps
-        self.qaoa = ignore_gate_list
+        self.ignore_gates = ignore_gate_list
         self.ifQft = False
         # print(del_gate_list)
     
-    def remove_layers(self, n:int):
-        pass
+    def to_qaoa(self, reduce=False):
+        """
+        reduce qft cir to qaoa. that is a (n-1)-regular graph
+        if reduce is true, it will reduce to (n-3)-regular graph by ignoreing some gate
+        """
+        assert self.maps, "should initial the maps"
+        assert self.ifQft, "before move gate, the circuit should still be qft"
+        
+        new_gate_list = self.gate_list[::2]
+        new_maps = self.maps[::2]
+        ignore_gate_list = self.ignore_gates[::2]
+        
+        if reduce:
+            ignore_gate_list[self.num_qubits-2] = False
+            ignore_gate_list[self.num_qubits-1] = False
+            
+            # add a ignore gate to meet the (n-3)-regular graph
+            n = math.floor(self.num_qubits/2)
+            print(n)
+            for i,gates in enumerate(new_gate_list):
+                if [0,n] in gates:
+                    print(gates)
+                    new_gate_list[i] = new_gate_list[i][:-1]
+                    new_gate_list.insert(i+1,[[0,n]])
+                    ignore_gate_list.insert(i+1,False)
+                    
+                    print(new_maps[i-1:i+3])
+                    new_maps.insert(i+1,swap_qubits_by_move(new_maps[i],new_gate_list[i]))
+                    print(new_maps[i-1:i+3])
+                    break
+            graph_degree = count_num_frequencies(self.num_qubits,new_gate_list,ignore_gate_list)
+            assert all(degree == self.num_qubits-3 for degree in graph_degree.values()), f"{graph_degree}"    
+        else:
+            graph_degree = count_num_frequencies(self.num_qubits,new_gate_list,ignore_gate_list)
+            assert all(degree == self.num_qubits-1 for degree in graph_degree.values()), f"{graph_degree}" 
+        self.gate_list = new_gate_list
+        self.maps = new_maps
+        self.ignore_gates = ignore_gate_list
+        self.ifQft = False
     def export_to_qasm(self, filename: str, full = True) -> None:
         """
         Export the quantum circuit to an OpenQASM file.
@@ -195,7 +257,7 @@ class QFT:
         else:
             qc = QuantumCircuit(self.num_qubits)
             for i, gates in enumerate(self.gate_list):
-                if self.qaoa[i]:
+                if self.ignore_gates[i]:
                     for gate in gates:
                         qc.cz(gate[0],gate[1])
             qasm2.dump(qc, filename)
