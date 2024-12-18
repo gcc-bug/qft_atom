@@ -125,9 +125,12 @@ class QFT:
         current_map = self.maps[0]
         for i in range(0, len(self.gate_list), 2):
             if i//2 in pick_layers:
-                del_gates = random.sample(self.gate_list[i], num_gate)
-                del_gate_list.append(del_gates)
+                if num_gate < len(self.gate_list[i]):
+                    del_gates = random.sample(self.gate_list[i], num_gate)
+                else:
+                    del_gates = self.gate_list[i]
                 
+                del_gate_list.append(del_gates)
                 gates = [gate for gate in self.gate_list[i] if gate not in del_gates]
                 if gates:
                     ignore_gate_list.extend([True,True,False])
@@ -167,7 +170,8 @@ class QFT:
         self.gate_list = new_gate_list
         self.maps = new_maps
         self.qaoa = ignore_gate_list
-        print(del_gate_list)
+        self.ifQft = False
+        # print(del_gate_list)
     
     def remove_layers(self, n:int):
         pass
@@ -180,14 +184,21 @@ class QFT:
             full: bool
             Export full circuit or cz circuit
         """
-        assert self.ifQft, "only support export qft"
+        
         if not filename.endswith('.qasm'):
             raise ValueError("The filename must end with '.qasm' to ensure proper QASM file format.")
-        if full:
-            qasm2.dump(self.full_circuit, filename)
+        if self.ifQft:
+            if full:
+                qasm2.dump(self.full_circuit, filename)
+            else:
+                qasm2.dump(self.cz_circuit, filename)
         else:
-            qasm2.dump(self.cz_circuit, filename)
-
+            qc = QuantumCircuit(self.num_qubits)
+            for i, gates in enumerate(self.gate_list):
+                if self.qaoa[i]:
+                    for gate in gates:
+                        qc.cz(gate[0],gate[1])
+            qasm2.dump(qc, filename)
         print(f"QASM file '{filename}' has been created.")
 
 def get_2q_gates_list(circ: QuantumCircuit)-> list[tuple[int]]:
