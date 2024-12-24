@@ -1969,7 +1969,7 @@ class Animator():
         )
 
         animation_file = dir + (code_file_name.replace(
-            '_code_full.json', '.mp4')).split('/')[-1]
+            '.json', '.mp4')).split('/')[-1]
         anim.save(animation_file, writer=FFMpegWriter(FPS))
 
     def read_files(self, code_file: str):

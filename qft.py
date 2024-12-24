@@ -216,17 +216,16 @@ class QFT:
             
             # add a ignore gate to meet the (n-3)-regular graph
             n = math.floor(self.num_qubits/2)
-            print(n)
             for i,gates in enumerate(new_gate_list):
                 if [0,n] in gates:
-                    print(gates)
-                    new_gate_list[i] = new_gate_list[i][:-1]
-                    new_gate_list.insert(i+1,[[0,n]])
-                    ignore_gate_list.insert(i+1,False)
-                    
-                    print(new_maps[i-1:i+3])
-                    new_maps.insert(i+1,swap_qubits_by_move(new_maps[i],new_gate_list[i]))
-                    print(new_maps[i-1:i+3])
+                    if len(gates) > 1:
+                        new_gate_list[i] = new_gate_list[i][:-1]
+                        new_gate_list.insert(i+1,[[0,n]])
+                        ignore_gate_list.insert(i+1,False)
+                        
+                        new_maps.insert(i+1,swap_qubits_by_move(new_maps[i],new_gate_list[i]))
+                    else:
+                        ignore_gate_list[i] = False
                     break
             graph_degree = count_num_frequencies(self.num_qubits,new_gate_list,ignore_gate_list)
             assert all(degree == self.num_qubits-3 for degree in graph_degree.values()), f"{graph_degree}"    
