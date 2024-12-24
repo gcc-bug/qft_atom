@@ -6,7 +6,28 @@ import copy
 import random
 import math
 
-basis_gate_set=["cz", "id", "u1", "u2", "u3"]
+basis_gate_set=["cz", "id", "u1", "u2", "u3"] 
+
+def random_regular_graph(n, d):
+    if n * d % 2 != 0:
+        raise ValueError("n * d must be even to construct a regular graph.")
+
+    nodes = list(range(n))
+    edges = []
+    stubs = nodes * d  # Create a list where each node appears d times
+    random.shuffle(stubs)
+
+    while stubs:
+        u = stubs.pop()
+        v = stubs.pop()
+        while u == v or [u, v] in edges or [v, u] in edges:  # Avoid loops and duplicate edges
+            stubs.append(v)  # Put back the node
+            random.shuffle(stubs)  # Shuffle to avoid infinite loops
+            v = stubs.pop()
+        # Ensure the larger node is always second in the pair
+        edges.append([u, v] if u < v else [v, u])
+
+    return edges
 
 def count_num_frequencies(n, nested_list, ignore_list):
     """
@@ -236,6 +257,70 @@ class QFT:
         self.maps = new_maps
         self.ignore_gates = ignore_gate_list
         self.ifQft = False
+    
+    def to_random_qaoa(self, d:int):
+        """
+        reduce qft cir to qaoa. a (d)-regular graph
+        """
+        assert self.maps, "should initial the maps"
+        assert self.ifQft, "before move gate, the circuit should still be qft"
+        
+        self.gate_list = self.gate_list[::2]
+        self.maps = self.maps[::2]
+        self.ignore_gates = self.ignore_gates[::2]
+        
+        edges = random_regular_graph(self.num_qubits,d)
+        # print(edges)
+        ignore_gate_list = []
+        new_gate_list = []
+        new_maps = []
+        current_map = self.maps[0]
+        
+        for i in range(len(self.gate_list)):
+            gates = [g for g in self.gate_list[i] if g in edges]
+            del_gates = [g for g in self.gate_list[i] if g not in gates]
+            
+            if gates and del_gates:
+                new_gate_list.append(gates)
+                new_maps.append(current_map)
+                ignore_gate_list.append(True)
+                
+                next_map = swap_qubits_by_move(current_map, gates)
+                current_map = copy.deepcopy(next_map)
+                
+                new_gate_list.append(del_gates)
+                new_maps.append(current_map)
+                ignore_gate_list.append(False)
+                
+                next_map = swap_qubits_by_move(current_map, del_gates)
+                current_map = copy.deepcopy(next_map)
+            elif del_gates:
+                new_gate_list.append(del_gates)
+                new_maps.append(current_map)
+                ignore_gate_list.append(False)
+                
+                next_map = swap_qubits_by_move(current_map, del_gates)
+                current_map = copy.deepcopy(next_map)
+            
+            elif gates:
+                new_gate_list.append(gates)
+                new_maps.append(current_map)
+                ignore_gate_list.append(True)
+                
+                next_map = swap_qubits_by_move(current_map, gates)
+                current_map = copy.deepcopy(next_map)
+            else:
+                raise ValueError(f"some error happen")
+        
+        # print(new_gate_list,ignore_gate_list)  
+        graph_degree = count_num_frequencies(self.num_qubits,new_gate_list,ignore_gate_list)
+        assert all(degree == d for degree in graph_degree.values()), f"{graph_degree}"    
+        
+        self.gate_list = new_gate_list
+        self.maps = new_maps
+        self.ignore_gates = ignore_gate_list
+        self.ifQft = False
+    
     def export_to_qasm(self, filename: str, full = True) -> None:
         """
         Export the quantum circuit to an OpenQASM file.
