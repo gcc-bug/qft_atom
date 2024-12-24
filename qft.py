@@ -8,25 +8,18 @@ import math
 
 basis_gate_set=["cz", "id", "u1", "u2", "u3"] 
 
+from igraph import Graph
+
 def random_regular_graph(n, d):
     if n * d % 2 != 0:
         raise ValueError("n * d must be even to construct a regular graph.")
-
-    nodes = list(range(n))
-    edges = []
-    stubs = nodes * d  # Create a list where each node appears d times
-    random.shuffle(stubs)
-
-    while stubs:
-        u = stubs.pop()
-        v = stubs.pop()
-        while u == v or [u, v] in edges or [v, u] in edges:  # Avoid loops and duplicate edges
-            stubs.append(v)  # Put back the node
-            random.shuffle(stubs)  # Shuffle to avoid infinite loops
-            v = stubs.pop()
-        # Ensure the larger node is always second in the pair
-        edges.append([u, v] if u < v else [v, u])
-
+    
+    G = Graph.K_Regular(n, d)  # Generate the graph
+    edges = G.get_edgelist()  # Extract edges as a list of tuples
+    
+    # Ensure larger node is always last and convert tuples to lists
+    edges = [[u, v] if u < v else [v, u] for u, v in edges]
+    
     return edges
 
 def count_num_frequencies(n, nested_list, ignore_list):
