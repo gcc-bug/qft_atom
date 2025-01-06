@@ -22,6 +22,14 @@ def random_regular_graph(n, d):
     
     return edges
 
+def read_edges_from_qasm(filename:str)->list:
+    cz_circuit = qasm2.load(filename)
+    edges = []
+    instruction = cz_circuit.data
+    for ins in instruction:
+        if ins.operation.num_qubits == 2:
+            edges.append([ins.qubits[0]._index, ins.qubits[1]._index])
+    return edges
 def count_num_frequencies(n, nested_list, ignore_list):
     """
     Calculate the frequency of each number in a nested list.
@@ -251,7 +259,7 @@ class QFT:
         self.ignore_gates = ignore_gate_list
         self.ifQft = False
     
-    def to_random_qaoa(self, d:int):
+    def to_random_qaoa(self, d:int, edges = None):
         """
         reduce qft cir to qaoa. a (d)-regular graph
         """
@@ -262,7 +270,12 @@ class QFT:
         self.maps = self.maps[::2]
         self.ignore_gates = self.ignore_gates[::2]
         
-        edges = random_regular_graph(self.num_qubits,d)
+        if not edges:
+            print("using random regular graph")
+            edges = random_regular_graph(self.num_qubits,d)
+        else:
+            print("using edges")
+
         # print(edges)
         ignore_gate_list = []
         new_gate_list = []
