@@ -5,12 +5,17 @@ from numpy import pi
 import copy
 import random
 import math
+import sys
+
 
 basis_gate_set=["cz", "id", "u1", "u2", "u3"] 
 
-from igraph import Graph
 
 def random_regular_graph(n, d):
+    if "jupyter" not in sys.modules:
+        from igraph import Graph
+    else:
+        raise ImportError(f"not run this function in jupyter notebook")
     if n * d % 2 != 0:
         raise ValueError("n * d must be even to construct a regular graph.")
     
@@ -301,9 +306,9 @@ class QFT:
                 next_map = swap_qubits_by_move(current_map, del_gates)
                 current_map = copy.deepcopy(next_map)
             elif del_gates:
-                new_gate_list.append(del_gates)
-                new_maps.append(current_map)
-                ignore_gate_list.append(False)
+                # new_gate_list.append(del_gates)
+                # new_maps.append(current_map)
+                # ignore_gate_list.append(False)
                 
                 next_map = swap_qubits_by_move(current_map, del_gates)
                 current_map = copy.deepcopy(next_map)
