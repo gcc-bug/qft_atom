@@ -299,16 +299,16 @@ class QFT:
                 next_map = swap_qubits_by_move(current_map, gates)
                 current_map = copy.deepcopy(next_map)
                 
-                # new_gate_list.append(del_gates)
-                # new_maps.append(current_map)
-                # ignore_gate_list.append(False)
+                new_gate_list.append(del_gates)
+                new_maps.append(current_map)
+                ignore_gate_list.append(False)
                 
                 next_map = swap_qubits_by_move(current_map, del_gates)
                 current_map = copy.deepcopy(next_map)
             elif del_gates:
-                # new_gate_list.append(del_gates)
-                # new_maps.append(current_map)
-                # ignore_gate_list.append(False)
+                new_gate_list.append(del_gates)
+                new_maps.append(current_map)
+                ignore_gate_list.append(False)
                 
                 next_map = swap_qubits_by_move(current_map, del_gates)
                 current_map = copy.deepcopy(next_map)
