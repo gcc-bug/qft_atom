@@ -6,6 +6,7 @@ import copy
 import random
 import math
 import sys
+from statistics import mean
 
 
 basis_gate_set=["cz", "id", "u1", "u2", "u3"] 
@@ -27,6 +28,11 @@ def random_regular_graph(n, d):
     
     return edges
 
+def gen_random_edge(gates:list, p: float):
+    assert p > 0 and p <= 1
+    edge = [gate for gate in gates if random.random() < p]
+    return edge
+    
 def read_edges_from_qasm(filename:str)->list:
     cz_circuit = qasm2.load(filename)
     edges = []
@@ -331,6 +337,95 @@ class QFT:
         self.maps = new_maps
         self.ignore_gates = ignore_gate_list
         self.ifQft = False
+    
+    def to_random_p_qaoa(self, p:float, edges = None):
+        """
+        reduce qft cir to qaoa. a (d)-regular graph
+        """
+        assert self.maps, "should initial the maps"
+        assert self.ifQft, "before move gate, the circuit should still be qft"
+        
+        self.gate_list = self.gate_list[::2]
+        self.maps = self.maps[::2]
+        self.ignore_gates = self.ignore_gates[::2]
+        
+        if not edges:
+            print("using random regular graph")
+            edges = []
+            for gates in self.gate_list:
+                edges.extend(gen_random_edge(gates,p))
+        else:
+            print("using edges")
+
+        # print(edges)
+        ignore_gate_list = []
+        new_gate_list = []
+        new_maps = []
+        current_map = self.maps[0]
+        
+        for i in range(len(self.gate_list)):
+            gates = [g for g in self.gate_list[i] if g in edges]
+            del_gates = [g for g in self.gate_list[i] if g not in gates]
+            
+            if gates and del_gates:
+                new_gate_list.append(gates)
+                new_maps.append(current_map)
+                ignore_gate_list.append(True)
+                
+                next_map = swap_qubits_by_move(current_map, gates)
+                current_map = copy.deepcopy(next_map)
+                
+                new_gate_list.append(del_gates)
+                new_maps.append(current_map)
+                ignore_gate_list.append(False)
+                
+                next_map = swap_qubits_by_move(current_map, del_gates)
+                current_map = copy.deepcopy(next_map)
+            elif del_gates:
+                new_gate_list.append(del_gates)
+                new_maps.append(current_map)
+                ignore_gate_list.append(False)
+                
+                next_map = swap_qubits_by_move(current_map, del_gates)
+                current_map = copy.deepcopy(next_map)
+            
+            elif gates:
+                new_gate_list.append(gates)
+                new_maps.append(current_map)
+                ignore_gate_list.append(True)
+                
+                next_map = swap_qubits_by_move(current_map, gates)
+                current_map = copy.deepcopy(next_map)
+            else:
+                raise ValueError(f"some error happen")
+        
+        self.gate_list = new_gate_list
+        self.maps = new_maps
+        self.ignore_gates = ignore_gate_list
+        self.ifQft = False
+    
+    def cal_d(self):
+        import networkx as nx
+        
+        G = nx.Graph()
+    
+        # Add all qubits as nodes
+        for i in range(self.num_qubits):
+            G.add_node(i)
+        
+        # Process each instruction in the circuit
+        for gates in self.gate_list:
+            for gate in gates:
+                assert gate[0] < self.num_qubits and gate[1] < self.num_qubits
+                G.add_edge(gate[0], gate[1])
+
+        
+        # Calculate degrees
+        degrees = dict(G.degree())
+        # Calculate average degree
+        avg_degree = mean(degrees.values())
+        
+        return degrees, avg_degree
     
     def export_to_qasm(self, filename: str, full = True) -> None:
         """
