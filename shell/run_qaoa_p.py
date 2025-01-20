@@ -16,11 +16,11 @@ code_path = "/home/gaodc/code/qft/random_p_qaoa/code"
 # os.makedirs(f"{code_path}/zigzag",exist_ok=True)
 
 for p in range(95,0,-5):
-    cir = QFT(n)
-    w = -1
-    maps = cir.LNN_maps(w)
-    cir.to_random_p_qaoa(p/100)
     for i in range(repeat_num):
+        cir = QFT(n)
+        w = -1
+        maps = cir.LNN_maps(w)
+        cir.to_random_p_qaoa(p/100)
         cir.export_to_qasm(f"{qasm_path}/qft{n}_{p}_{i}.qasm")
     print(f"creat {p}")
     
