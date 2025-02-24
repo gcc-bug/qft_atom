@@ -50,6 +50,7 @@ class Simulator():
     def simulate(self):
         move_distance = 0
         big_mov_distance = 0
+        offset_distance = 0
         self.cir_fidelity = 1
         self.cir_fidelity_2q_gate = 1
         self.cir_fidelity_2q_gate_for_idle = 1
@@ -66,6 +67,7 @@ class Simulator():
         list_movement_duration = []
         list_atom_transfer_duration = []
         num_Bigmov = 0
+        num_offsetmov = 0
         for instruction in self.list_instrcution:
             duration = instruction["duration"]
             if instruction["type"] == "Init":
@@ -111,6 +113,9 @@ class Simulator():
                         num_Bigmov += 1
                         self.cir_qubit_idle_time_big[i] += duration
                         big_mov_distance += sum(instruction["distance"])
+                    else:
+                        num_offsetmov += 1
+                        offset_distance += sum(instruction["distance"])
                     num_movement_stage += 1
                     list_movement_duration.append(duration)
                     move_distance += sum(instruction["distance"])
@@ -142,10 +147,12 @@ class Simulator():
                     "num_transfer": num_transfer,
                     "num_movement_stage": num_movement_stage,
                     "num_big_move":num_Bigmov,
+                    "num_offset_move":num_offsetmov,
                     "total_move_dis": move_distance,
                     "bigmov_dis": big_mov_distance,
+                    "offset_dis": offset_distance,
                     "movement_time_ratio": [ total_movement_time/self.cir_qubit_idle_time[i] for i in range(self.n_qubit) ],
-                    "average_movement": sum(list_movement_duration) / len(list_movement_duration) ,
+                    "average_movement": sum(list_movement_duration) / len(list_movement_duration) if list_movement_duration else 0,
                     "list_movement_duration": list_movement_duration}
         return results
         
