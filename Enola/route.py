@@ -183,7 +183,7 @@ class QuantumRouter:
         if ignore_gate_list:
             assert len(ignore_gate_list) == len(gate_list)
         else:
-            ignore_gate_list = [True for _ in len(gate_list)]
+            ignore_gate_list = [True for _ in range(len(gate_list))]
         assert len(before_gate_maps) == len(gate_list), "The number of before gate maps should match the number of two-qubit gates in gate_list."
         self.gate_list = gate_list
         self.ignore_gate_list = ignore_gate_list
@@ -444,12 +444,12 @@ class QuantumRouter:
             # print(i)
             layers=[]
             for mov in self.movement_list[i*2]:
-                layers.append(self.update_layer(map_to_layer(before_map),mov))
+                layers.append(self.update_layer(map_to_layer(before_map),mov)) # move to before gate's map 
 
             if i+1 < len(self.before_gate_maps):
                 for mov in self.movement_list[i*2+1]:
                     # print(i)
-                    layers.append(self.update_layer(map_to_layer(self.gate_maps[i]),mov))
+                    layers.append(self.update_layer(map_to_layer(self.gate_maps[i]),mov)) # mov to gate map
                 if self.ignore_gate_list[i]:
                     layers[-1]["gates"] = gates_in_layer(self.gate_list[i])
                 layers.append(map_to_layer(self.before_gate_maps[i+1]))
