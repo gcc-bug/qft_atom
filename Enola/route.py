@@ -160,9 +160,9 @@ def gates_in_layer(gate_list:list[list[int]])->list[dict[str, int]]:
 class QuantumRouter:
     def __init__(self, num_qubits: int, 
                  before_gate_maps: list[list[list[int]]], 
-                 gate_list: list[list[int]], 
+                 qft_gate_list: list[list[int]], 
                  arch_size: list[int], 
-                 ignore_gate_list: list[bool] = None,
+                 real_gate_list: list[list[int]],
                  routing_strategy: str = "maximalis"
                  ) -> None:
         """
@@ -180,19 +180,26 @@ class QuantumRouter:
         self.before_gate_maps = before_gate_maps
         self.gate_maps = []
         
-        if ignore_gate_list:
-            assert len(ignore_gate_list) == len(gate_list)
+        if real_gate_list:
+            assert len(real_gate_list) == len(qft_gate_list)
         else:
-            ignore_gate_list = [True for _ in range(len(gate_list))]
-        assert len(before_gate_maps) == len(gate_list), "The number of before gate maps should match the number of two-qubit gates in gate_list."
-        self.gate_list = gate_list
-        self.ignore_gate_list = ignore_gate_list
+            real_gate_list = qft_gate_list
+        assert len(before_gate_maps) == len(qft_gate_list), "The number of before gate maps should match the number of two-qubit gates in gate_list."
+        self.qft_gate_list = qft_gate_list
+        self.real_gate_list = real_gate_list
 
+        self.validate_real_gates()
         self.validate_architecture_size(arch_size)
         self.arch_size = arch_size
         self.routing_strategy = routing_strategy
         self.movement_list = []
 
+    def validate_real_gates(self):
+        for i, gates in enumerate(self.real_gate_list):
+            for gate in gates:
+                q0, q1 = gate
+                if [q0,q1] not in self.qft_gate_list[i] and [q1,q0] not in self.qft_gate_list:
+                    raise ValueError(f"qft list not contain this gate list")
     def validate_embeddings(self, before_gate_maps: list[list[list[int]]]) -> None:
         """
         Validate the maps to ensure they contain locations for all qubits.
@@ -241,7 +248,7 @@ class QuantumRouter:
             "no_transfer": False,
             "layers": layers,
             "n_q": self.num_qubits,
-            "g_q": self.gate_list,
+            "g_q": self.qft_gate_list,
             "n_x": self.arch_size[0],
             "n_y": self.arch_size[1],
             "n_c": self.arch_size[0],
@@ -293,7 +300,7 @@ class QuantumRouter:
 
     def get_gate_maps(self, current_pos:int ):
         gate_maps = copy.deepcopy(self.before_gate_maps[current_pos])
-        for q0, q1 in self.gate_list[current_pos]:
+        for q0, q1 in self.qft_gate_list[current_pos]:
             gate_maps[q0], gate_maps[q1] = gate_maps[q1], gate_maps[q0]
         return gate_maps
     def move_to_before_map(self, current_pos:int, gate_map):
@@ -344,7 +351,7 @@ class QuantumRouter:
             del movements[qubit]
             if current_pos != None:
                 # print(f"qubit:{qubit}, pos:{current_pos}, gate:{self.gate_list[current_pos]}")
-                for q0,q1 in self.gate_list[current_pos]:
+                for q0,q1 in self.qft_gate_list[current_pos]:
                     if q0 == qubit:
                         sorted_keys.remove(q1)
                         violations = [v for v in violations if q1 not in v]
@@ -429,6 +436,27 @@ class QuantumRouter:
             layer["qubits"][qubit]["r"] = next_pos[1]
         return new_layer
 
+    
+    def using_qubit(self, pos:int):
+        using_qubit = []
+        for gate in self.real_gate_list[pos]:
+            q0, q1 = gate
+            using_qubit.append(q0)
+            using_qubit.append(q1)
+        return set(using_qubit)
+
+    def modify_mov_for_real(self, gate_pos:int, move_pos:int):
+        assert self.movement_list, "should finish the calculation of movements"
+        use_qubits = self.using_qubit(gate_pos)
+        mov_for_gate = []
+        mov_for_move = []
+        
+        for mov in self.movement_list[move_pos]:
+            for qubit, _, _ in mov:
+                if qubit in use_qubits:
+                    pass
+        
+        return mov_for_gate, mov_for_move
     def save_program(self, filename: str) -> None:
         """
         Save the generated program to a file.
@@ -443,6 +471,7 @@ class QuantumRouter:
         for i, before_map in enumerate(self.before_gate_maps):
             # print(i)
             layers=[]
+            mov_for_gate, move_for_move = self.modify_mov_for_real(i, i*2)
             for mov in self.movement_list[i*2]:
                 layers.append(self.update_layer(map_to_layer(before_map),mov)) # move to before gate's map 
 
@@ -450,13 +479,12 @@ class QuantumRouter:
                 for mov in self.movement_list[i*2+1]:
                     # print(i)
                     layers.append(self.update_layer(map_to_layer(self.gate_maps[i]),mov)) # mov to gate map
-                if self.ignore_gate_list[i]:
-                    layers[-1]["gates"] = gates_in_layer(self.gate_list[i])
+                layers[-1]["gates"] = gates_in_layer(self.qft_gate_list[i])
                 layers.append(map_to_layer(self.before_gate_maps[i+1]))
             else:
                 layers.append(map_to_layer(self.gate_maps[i]))
-                if self.ignore_gate_list[i]:
-                    layers[-1]["gates"] = gates_in_layer(self.gate_list[i])
+                if self.real_gate_list:
+                    layers[-1]["gates"] = gates_in_layer(self.real_gate_list[i])
 
 
             # print(f"layers: {layers}")
