@@ -18,6 +18,18 @@ def direction_vector(dx, dy):
         return (dx // abs(dx), dy // abs(dy))
         
         
+def apply_mov_for_map(movement, map):
+    res_map = copy.deepcopy(map)
+    for movs in movement:
+        # print(movs)
+        for qubit, (ox,oy), (nx,ny) in movs:
+            try: 
+                assert res_map[qubit] == (ox,oy), f"origin loc not equal"
+                res_map[qubit] = (nx,ny)
+            except:
+                raise ValueError(f"{movement} \n with \n {map} \n in {qubit}")
+    return res_map
+    
 def compatible_2D(a: list[int], b: list[int]) -> bool:
     """
     Checks if two 2D points are compatible based on specified rules.
@@ -448,15 +460,27 @@ class QuantumRouter:
     def modify_mov_for_real(self, gate_pos:int, move_pos:int):
         assert self.movement_list, "should finish the calculation of movements"
         use_qubits = self.using_qubit(gate_pos)
+        # print(use_qubits)
         mov_for_gate = []
         mov_for_move = []
         
-        for mov in self.movement_list[move_pos]:
-            for qubit, _, _ in mov:
+        for movs in self.movement_list[move_pos]:
+            temp_mov_for_gate = []
+            temp_mov_for_move = []
+            for mov in movs:
+                qubit, _, _ = mov
                 if qubit in use_qubits:
-                    pass
+                    temp_mov_for_gate.append(mov)
+                else:
+                    temp_mov_for_move.append(mov)
+            
+            if temp_mov_for_gate:
+                mov_for_gate.append(temp_mov_for_gate)
+            if temp_mov_for_move:
+                mov_for_move.append(temp_mov_for_move)
         
         return mov_for_gate, mov_for_move
+        
     def save_program(self, filename: str) -> None:
         """
         Save the generated program to a file.
@@ -465,26 +489,35 @@ class QuantumRouter:
         """
         print(filename)
         assert filename.endswith('.json'), "program should be saved to a .json file"
-        # assert len(self.movement_list) == len(self.before_gate_maps)+len(self.gate_maps), "before generate program, movement should be finished"
-        # layers = [map_to_layer(self.before_gate_maps[0])]
+        assert len(self.movement_list) == len(self.before_gate_maps)+len(self.gate_maps)-1, f"before generate program, movement should be finished, now: {len(self.movement_list),len(self.before_gate_maps),len(self.gate_maps)}"
         program = []
         for i, before_map in enumerate(self.before_gate_maps):
             # print(i)
-            layers=[]
-            mov_for_gate, move_for_move = self.modify_mov_for_real(i, i*2)
-            for mov in self.movement_list[i*2]:
-                layers.append(self.update_layer(map_to_layer(before_map),mov)) # move to before gate's map 
+            layers=[map_to_layer(before_map)]
+            
+            mov_for_gate, mov_for_move = self.modify_mov_for_real(i,i*2)
+            # print(mov_for_move)
+            # print(mov_for_gate)
+            real_gate_map = apply_mov_for_map(mov_for_gate, before_map) # if move_for_gate have no move, real_gate_map should equal to gate_maps[i]
+            
+            if self.real_gate_list[i]:
+                # move to gate map
+                for mov in mov_for_gate:
+                    layers.append(self.update_layer(map_to_layer(before_map),mov))
 
+                layers.append(map_to_layer(real_gate_map))
+                
+            if mov_for_move and all(len(inner) for inner in mov_for_move):
+                for mov in mov_for_move:
+                    layers.append(self.update_layer(map_to_layer(real_gate_map),mov))
+                layers.append(map_to_layer(self.gate_maps[i]))
+
+                
+            
+            # gate map to next before map
             if i+1 < len(self.before_gate_maps):
                 for mov in self.movement_list[i*2+1]:
-                    # print(i)
-                    layers.append(self.update_layer(map_to_layer(self.gate_maps[i]),mov)) # mov to gate map
-                layers[-1]["gates"] = gates_in_layer(self.qft_gate_list[i])
-                layers.append(map_to_layer(self.before_gate_maps[i+1]))
-            else:
-                layers.append(map_to_layer(self.gate_maps[i]))
-                if self.real_gate_list:
-                    layers[-1]["gates"] = gates_in_layer(self.real_gate_list[i])
+                    layers.append(self.update_layer(map_to_layer(self.gate_maps[i]),mov))
 
 
             # print(f"layers: {layers}")
