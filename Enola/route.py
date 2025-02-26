@@ -174,7 +174,7 @@ class QuantumRouter:
                  before_gate_maps: list[list[list[int]]], 
                  qft_gate_list: list[list[int]], 
                  arch_size: list[int], 
-                 real_gate_list: list[list[int]],
+                 real_gate_list: list[list[list[int]]],
                  routing_strategy: str = "maximalis"
                  ) -> None:
         """
@@ -506,6 +506,8 @@ class QuantumRouter:
                     layers.append(self.update_layer(map_to_layer(before_map),mov))
 
                 layers.append(map_to_layer(real_gate_map))
+                
+                layers[-1]["gates"] = gates_in_layer(self.real_gate_list[i])
                 
             if mov_for_move and all(len(inner) for inner in mov_for_move):
                 for mov in mov_for_move:
