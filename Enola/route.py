@@ -520,6 +520,7 @@ class QuantumRouter:
             if i+1 < len(self.before_gate_maps):
                 for mov in self.movement_list[i*2+1]:
                     layers.append(self.update_layer(map_to_layer(self.gate_maps[i]),mov))
+                layers.append(map_to_layer(self.before_gate_maps[i+1]))
 
 
             # print(f"layers: {layers}")
