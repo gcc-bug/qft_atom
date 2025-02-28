@@ -1,5 +1,3 @@
-Here is the README in Markdown format:
-
 # qft_atom
 
 This repository contains the implementation and experiment scripts for the paper, focusing on QFT (Quantum Fourier Transform) and its optimizations.
@@ -17,10 +15,9 @@ This repository contains the implementation and experiment scripts for the paper
    ```sh
    git clone https://github.com/gcc-bug/qft_atom.git
    cd qft_atom
-  ```
+  
 2.	Ensure dependencies are installed (if applicable).
 3.	Run the main script:
   ```
   python shell/run.py
   ```
-
