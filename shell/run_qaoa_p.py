@@ -9,13 +9,8 @@ import time
 data_list = []
 n = 50
 repeat_num = 10
-<<<<<<< HEAD
 qasm_path = "./random_p_qaoa/qasm"
 code_path = "./random_p_qaoa/code"
-=======
-qasm_path = "/home/gaodc/code/qft/random_p_qaoa/qasm"
-code_path = "/home/gaodc/code/qft/random_p_qaoa_/code"
->>>>>>> 49e7657266d5b3e999c5407390af123443d5bb14
 os.makedirs(qasm_path,exist_ok=True)
 os.makedirs(f"{code_path}/LNN",exist_ok=True)
 os.makedirs(f"{code_path}/zigzag",exist_ok=True)
