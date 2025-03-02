@@ -110,13 +110,60 @@ class QFT:
         :param num_qubits: int
             The number of qubits for the quantum circuit.
         """
+        super().__setattr__('_locked', False)  # Unlock during initialization
         self.num_qubits = num_qubits
         self.full_circuit = self._initialize_circuit()
         self.cz_circuit = get_cz_circuit(self.full_circuit)
-        self.gate_list = self._split_gates()
-        self.ifQft = True
-        self.ignore_gates: list[bool] = [True for _ in range(len(self.gate_list))]
-        self.maps = None
+        
+        self._ifQft = True  # Can only be modified once
+        self._ifQft_set = False  # Ensures ifQft can only be changed once
+        
+        self._qft_gate_list = self._split_gates()
+        self._gate_list = self.qft_gate_list
+        
+        self._maps_locked = False  # Prevents modifications after initialization
+        self._maps = None   # Will be frozen after self.LNN_maps()
+        
+        super().__setattr__('_locked', True)  # Lock all attributes
+
+    def __setattr__(self, key, value):
+        """Prevent modification of attributes after initialization."""
+        if getattr(self, '_locked', False) and key not in {"_gate_list","_maps","_qft_gate_list"}:
+            raise AttributeError(f"{key} is frozen and cannot be modified.")
+        elif key in {"_qft_gate_list", "_maps"} and not self._ifQft:
+            raise AttributeError(f"{key} is frozen and cannot be modified.")
+            
+        super().__setattr__(key, value)
+
+    @property
+    def gate_list(self):
+        """Allows reading but modification is restricted."""
+        return self._gate_list
+    
+    @property
+    def qft_gate_list(self):
+        """Allows reading but modification is restricted."""
+        return self._qft_gate_list
+
+    @property
+    def ifQft(self):
+        """Getter for ifQft."""
+        return self._ifQft
+
+    def IncompletetQft(self):
+        """Setter allows modifying ifQft only once."""
+        super().__setattr__('_locked', False)
+        if self._ifQft_set:
+            raise AttributeError("ifQft can only be modified once.")
+        self._ifQft = False
+        self._ifQft_set = True  # Lock modification
+        super().__setattr__('_locked', True)
+
+    @property
+    def maps(self):
+        """Getter for maps."""
+        return self._maps
+
 
     def _initialize_circuit(self) -> tuple[QuantumCircuit, list[list[int]]]:
         """
@@ -161,125 +208,40 @@ class QFT:
             else:
                 current_map = linear_map(self.num_qubits, False)
         
-        for i, gates in enumerate(self.gate_list):
+        for i, gates in enumerate(self._gate_list):
             if i%2 == 0:
                 maps.append(current_map)
             else:
                 new_map = swap_qubits_by_move(current_map, gates)
                 maps.append(new_map)
                 current_map = copy.deepcopy(new_map)
-        self.maps = maps
+        
+        super().__setattr__('_locked', False)
+        self._maps = maps
+        self._maps_locked = True
+        super().__setattr__('_locked', True)
         return maps
 
-    def remove_gate(self, num_lay:int, num_gate = 1):
-        assert self.maps, "should initial the maps"
-        assert self.ifQft, "before move gate, the circuit should still be qft"
-        pick_layers = random.sample(range(len(self.gate_list)//2), num_lay)
-        
-        new_gate_list = []
-        del_gate_list = []
-        ignore_gate_list = []
-        new_maps = []
-        current_map = self.maps[0]
-        for i in range(0, len(self.gate_list), 2):
-            if i//2 in pick_layers:
-                if num_gate < len(self.gate_list[i]):
-                    del_gates = random.sample(self.gate_list[i], num_gate)
-                else:
-                    del_gates = self.gate_list[i]
-                
-                del_gate_list.append(del_gates)
-                gates = [gate for gate in self.gate_list[i] if gate not in del_gates]
-                if gates:
-                    ignore_gate_list.extend([True,True,False])
-                    new_gate_list.append(gates)
-                    new_gate_list.append(gates)
-                    new_gate_list.append(del_gates)
-                    
-                    new_maps.append(current_map)
-                    
-                    next_map = swap_qubits_by_move(current_map, gates)
-                    current_map = copy.deepcopy(next_map)
-                    
-                    new_maps.append(current_map)
-                    
-                    next_map = swap_qubits_by_move(current_map, del_gates)
-                    current_map = copy.deepcopy(next_map)
-                    new_maps.append(current_map)
-                    
-                else:
-                    ignore_gate_list.extend([False])
-                    new_gate_list.append(del_gates)
-                    
-                    new_maps.append(current_map)
-                    next_map = swap_qubits_by_move(current_map, del_gates)
-                    current_map = copy.deepcopy(next_map)
-            else:
-                ignore_gate_list.extend([True,True])
-                new_gate_list.append(self.gate_list[i])
-                new_gate_list.append(self.gate_list[i])
-                
-                gates = self.gate_list[i]
-                new_maps.append(current_map)
-                next_map = swap_qubits_by_move(current_map, gates)
-                current_map = copy.deepcopy(next_map)
-                new_maps.append(current_map)
-                
-        self.gate_list = new_gate_list
-        self.maps = new_maps
-        self.ignore_gates = ignore_gate_list
-        self.ifQft = False
-        # print(del_gate_list)
-    
     def to_qaoa(self, reduce=False):
         """
         reduce qft cir to qaoa. that is a (n-1)-regular graph
         if reduce is true, it will reduce to (n-3)-regular graph by ignoreing some gate
         """
-        assert self.maps, "should initial the maps"
-        assert self.ifQft, "before move gate, the circuit should still be qft"
-        
-        new_gate_list = self.gate_list[::2]
-        new_maps = self.maps[::2]
-        ignore_gate_list = self.ignore_gates[::2]
-        
-        if reduce:
-            ignore_gate_list[self.num_qubits-2] = False
-            ignore_gate_list[self.num_qubits-1] = False
-            
-            # add a ignore gate to meet the (n-3)-regular graph
-            n = math.floor(self.num_qubits/2)
-            for i,gates in enumerate(new_gate_list):
-                if [0,n] in gates:
-                    if len(gates) > 1:
-                        new_gate_list[i] = new_gate_list[i][:-1]
-                        new_gate_list.insert(i+1,[[0,n]])
-                        ignore_gate_list.insert(i+1,False)
-                        
-                        new_maps.insert(i+1,swap_qubits_by_move(new_maps[i],new_gate_list[i]))
-                    else:
-                        ignore_gate_list[i] = False
-                    break
-            graph_degree = count_num_frequencies(self.num_qubits,new_gate_list,ignore_gate_list)
-            assert all(degree == self.num_qubits-3 for degree in graph_degree.values()), f"{graph_degree}"    
-        else:
-            graph_degree = count_num_frequencies(self.num_qubits,new_gate_list,ignore_gate_list)
-            assert all(degree == self.num_qubits-1 for degree in graph_degree.values()), f"{graph_degree}" 
-        self.gate_list = new_gate_list
-        self.maps = new_maps
-        self.ignore_gates = ignore_gate_list
-        self.ifQft = False
+        pass
     
     def to_random_qaoa(self, d:int, edges = None):
         """
         reduce qft cir to qaoa. a (d)-regular graph
         """
-        assert self.maps, "should initial the maps"
+        assert self._maps, "should initial the maps"
         assert self.ifQft, "before move gate, the circuit should still be qft"
         
-        self.gate_list = self.gate_list[::2]
-        self.maps = self.maps[::2]
-        self.ignore_gates = self.ignore_gates[::2]
+        self._qft_gate_list = self._qft_gate_list[::2]
+        self._maps = self._maps[::2]
+        self.IncompletetQft()
+        self._gate_list = self._qft_gate_list
+        
+        self._maps = self._maps[::2]
         
         if not edges:
             print("using random regular graph")
@@ -288,121 +250,52 @@ class QFT:
             print("using edges")
 
         # print(edges)
-        ignore_gate_list = []
         new_gate_list = []
-        new_maps = []
-        current_map = self.maps[0]
         
-        for i in range(len(self.gate_list)):
-            gates = [g for g in self.gate_list[i] if g in edges]
-            del_gates = [g for g in self.gate_list[i] if g not in gates]
+        for i in range(len(self._gate_list)):
+            gates = [g for g in self._gate_list[i] if g in edges]
             
-            if gates and del_gates:
-                new_gate_list.append(gates)
-                new_maps.append(current_map)
-                ignore_gate_list.append(True)
-                
-                next_map = swap_qubits_by_move(current_map, gates)
-                current_map = copy.deepcopy(next_map)
-                
-                new_gate_list.append(del_gates)
-                new_maps.append(current_map)
-                ignore_gate_list.append(False)
-                
-                next_map = swap_qubits_by_move(current_map, del_gates)
-                current_map = copy.deepcopy(next_map)
-            elif del_gates:
-                new_gate_list.append(del_gates)
-                new_maps.append(current_map)
-                ignore_gate_list.append(False)
-                
-                next_map = swap_qubits_by_move(current_map, del_gates)
-                current_map = copy.deepcopy(next_map)
-            
-            elif gates:
-                new_gate_list.append(gates)
-                new_maps.append(current_map)
-                ignore_gate_list.append(True)
-                
-                next_map = swap_qubits_by_move(current_map, gates)
-                current_map = copy.deepcopy(next_map)
-            else:
-                raise ValueError(f"some error happen")
+            new_gate_list.append(gates)
         
         # print(new_gate_list,ignore_gate_list)  
-        graph_degree = count_num_frequencies(self.num_qubits,new_gate_list,ignore_gate_list)
+        graph_degree = count_num_frequencies(self.num_qubits,
+                                             new_gate_list,
+                                             [True for _ in range(len(new_gate_list))])
         assert all(degree == d for degree in graph_degree.values()), f"{graph_degree}"    
         
-        self.gate_list = new_gate_list
-        self.maps = new_maps
-        self.ignore_gates = ignore_gate_list
-        self.ifQft = False
+        self._gate_list = new_gate_list
     
     def to_random_p_qaoa(self, p:float, edges = None):
         """
         reduce qft cir to qaoa. a (d)-regular graph
         """
-        assert self.maps, "should initial the maps"
+        assert self._maps, "should initial the maps"
         assert self.ifQft, "before move gate, the circuit should still be qft"
         
-        self.gate_list = self.gate_list[::2]
-        self.maps = self.maps[::2]
-        self.ignore_gates = self.ignore_gates[::2]
+        self._qft_gate_list = self._qft_gate_list[::2]
+        self._maps = self._maps[::2]
+        self.IncompletetQft()
+        self._gate_list = self._qft_gate_list
         
         if not edges:
             print("using random regular graph")
             edges = []
-            for gates in self.gate_list:
+            for gates in self._gate_list:
                 edges.extend(gen_random_edge(gates,p))
         else:
             print("using edges")
 
         # print(edges)
-        ignore_gate_list = []
         new_gate_list = []
-        new_maps = []
-        current_map = self.maps[0]
         
-        for i in range(len(self.gate_list)):
-            gates = [g for g in self.gate_list[i] if g in edges]
-            del_gates = [g for g in self.gate_list[i] if g not in gates]
-            
-            if gates and del_gates:
-                new_gate_list.append(gates)
-                new_maps.append(current_map)
-                ignore_gate_list.append(True)
-                
-                next_map = swap_qubits_by_move(current_map, gates)
-                current_map = copy.deepcopy(next_map)
-                
-                new_gate_list.append(del_gates)
-                new_maps.append(current_map)
-                ignore_gate_list.append(False)
-                
-                next_map = swap_qubits_by_move(current_map, del_gates)
-                current_map = copy.deepcopy(next_map)
-            elif del_gates:
-                new_gate_list.append(del_gates)
-                new_maps.append(current_map)
-                ignore_gate_list.append(False)
-                
-                next_map = swap_qubits_by_move(current_map, del_gates)
-                current_map = copy.deepcopy(next_map)
-            
-            elif gates:
-                new_gate_list.append(gates)
-                new_maps.append(current_map)
-                ignore_gate_list.append(True)
-                
-                next_map = swap_qubits_by_move(current_map, gates)
-                current_map = copy.deepcopy(next_map)
-            else:
-                raise ValueError(f"some error happen")
+        for i in range(len(self._gate_list)):
+            gates = [g for g in self._gate_list[i] if g in edges]
+            new_gate_list.append(gates)
         
-        self.gate_list = new_gate_list
-        self.maps = new_maps
-        self.ignore_gates = ignore_gate_list
-        self.ifQft = False
+        self._gate_list = new_gate_list
+        
+        print(self.cal_d())
+        
     
     def cal_d(self):
         import networkx as nx
@@ -414,7 +307,7 @@ class QFT:
             G.add_node(i)
         
         # Process each instruction in the circuit
-        for gates in self.gate_list:
+        for gates in self._gate_list:
             for gate in gates:
                 assert gate[0] < self.num_qubits and gate[1] < self.num_qubits
                 G.add_edge(gate[0], gate[1])
@@ -446,10 +339,9 @@ class QFT:
                 qasm2.dump(self.cz_circuit, filename)
         else:
             qc = QuantumCircuit(self.num_qubits)
-            for i, gates in enumerate(self.gate_list):
-                if self.ignore_gates[i]:
-                    for gate in gates:
-                        qc.cz(gate[0],gate[1])
+            for i, gates in enumerate(self._gate_list):
+                for gate in gates:
+                    qc.cz(gate[0],gate[1])
             qasm2.dump(qc, filename)
         print(f"QASM file '{filename}' has been created.")
 

@@ -10,19 +10,19 @@ data_list = []
 n = 50
 repeat_num = 10
 qasm_path = "/home/gaodc/code/qft/random_p_qaoa/qasm"
-code_path = "/home/gaodc/code/qft/random_p_qaoa/code"
-# os.makedirs(qasm_path,exist_ok=True)
-# os.makedirs(f"{code_path}/LNN",exist_ok=True)
-# os.makedirs(f"{code_path}/zigzag",exist_ok=True)
+code_path = "/home/gaodc/code/qft/random_p_qaoa_/code"
+os.makedirs(qasm_path,exist_ok=True)
+os.makedirs(f"{code_path}/LNN",exist_ok=True)
+os.makedirs(f"{code_path}/zigzag",exist_ok=True)
 
-for p in range(95,0,-5):
-    for i in range(repeat_num):
-        cir = QFT(n)
-        w = -1
-        maps = cir.LNN_maps(w)
-        cir.to_random_p_qaoa(p/100)
-        cir.export_to_qasm(f"{qasm_path}/qft{n}_{p}_{i}.qasm")
-    print(f"creat {p}")
+# for p in range(95,0,-5):
+#     for i in range(repeat_num):
+#         cir = QFT(n)
+#         w = -1
+#         maps = cir.LNN_maps(w)
+#         cir.to_random_p_qaoa(p/100)
+#         cir.export_to_qasm(f"{qasm_path}/qft{n}_{p}_{i}.qasm")
+#     print(f"creat {p}")
     
 for p in range(95,0,-5):
     for i in range(repeat_num):
@@ -36,7 +36,7 @@ for p in range(95,0,-5):
         maps = cir.LNN_maps(w)
         cir.to_random_p_qaoa(p/100,edges)
         
-        route = QuantumRouter(cir.num_qubits,cir.maps,cir.gate_list, [cir.num_qubits+2,3],cir.ignore_gates,"others")
+        route = QuantumRouter(cir.num_qubits,cir.maps,cir.qft_gate_list, [cir.num_qubits+2,3],cir.gate_list,"others")
         route.run()
         route.save_program(f"{code_path}/LNN/qft{n}_{p}_{i}_full_code.json")
         data["LNN time 1"] = time.time() - time_s
@@ -48,7 +48,7 @@ for p in range(95,0,-5):
         maps = cir.LNN_maps(w)
         cir.to_random_p_qaoa(p/100,edges)
         
-        route = QuantumRouter(cir.num_qubits,cir.maps,cir.gate_list, [12,12],cir.ignore_gates,"others")
+        route = QuantumRouter(cir.num_qubits,cir.maps,cir.qft_gate_list, [12,12],cir.gate_list,"others")
         route.run()
         route.save_program(f"{code_path}/zigzag/qft{n}_{p}_{i}_full_code.json")
         data["zigzag time"] = time.time() - time_s
