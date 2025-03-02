@@ -9,11 +9,11 @@ import time
 data_list = []
 n = 50
 repeat_num = 10
-qasm_path = "/home/gaodc/code/qft/random_p_qaoa/qasm"
-code_path = "/home/gaodc/code/qft/random_p_qaoa/code"
-# os.makedirs(qasm_path,exist_ok=True)
-# os.makedirs(f"{code_path}/LNN",exist_ok=True)
-# os.makedirs(f"{code_path}/zigzag",exist_ok=True)
+qasm_path = "./random_p_qaoa/qasm"
+code_path = "./random_p_qaoa/code"
+os.makedirs(qasm_path,exist_ok=True)
+os.makedirs(f"{code_path}/LNN",exist_ok=True)
+os.makedirs(f"{code_path}/zigzag",exist_ok=True)
 
 for p in range(95,0,-5):
     for i in range(repeat_num):
